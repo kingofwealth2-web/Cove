@@ -19,6 +19,7 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
   const [method, setMethod] = useState("envelope");
   const [addingCat, setAddingCat] = useState(false);
   const [newCat, setNewCat] = useState({ name: "", icon: "📦", color: "#6366F1", budget: "" });
+  const [editingBudget, setEditingBudget] = useState({}); // catId -> draft value
 
   const now = new Date();
   const viewDate = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
@@ -104,9 +105,26 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
                 <span style={{ color: C.textMuted, fontSize: 14, marginLeft: 4 }}>{isExpanded ? "▲" : "▼"}</span>
               </div>
               {isExpanded && (
-                <div style={{ borderTop: `1px solid ${C.border}`, padding: "8px 20px 16px" }}>
+                <div style={{ borderTop: `1px solid ${C.border}`, padding: "12px 20px 16px" }}>
+                  {/* Budget editor */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12 }}>
+                    <span style={{ fontSize: 13, color: C.textMuted, flex: 1 }}>Monthly budget</span>
+                    <span style={{ fontSize: 13, color: C.textMuted }}>{user.currency}</span>
+                    <input
+                      type="number"
+                      value={editingBudget[cat.id] ?? (cat.budget_amount ?? cat.budget ?? 0)}
+                      onChange={e => setEditingBudget(prev => ({ ...prev, [cat.id]: e.target.value }))}
+                      onBlur={() => {
+                        const val = parseFloat(editingBudget[cat.id]);
+                        if (!isNaN(val)) setCategories(cats => cats.map(c => c.id === cat.id ? { ...c, budget_amount: val, budget: val } : c));
+                        setEditingBudget(prev => { const n = { ...prev }; delete n[cat.id]; return n; });
+                      }}
+                      onKeyDown={e => e.key === "Enter" && e.currentTarget.blur()}
+                      style={{ background: C.surface, border: `1px solid ${C.accent}`, borderRadius: 8, padding: "6px 10px", fontSize: 14, color: C.text, outline: "none", width: 120, textAlign: "right", fontFamily: "'DM Mono', monospace" }}
+                    />
+                  </div>
                   {catTx.length === 0 ? (
-                    <div style={{ fontSize: 13, color: C.textMuted, padding: "8px 0" }}>No transactions this month</div>
+                    <div style={{ fontSize: 13, color: C.textMuted, padding: "4px 0" }}>No transactions this month</div>
                   ) : catTx.map((tx, j) => (
                     <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: j < catTx.length - 1 ? `1px solid ${C.border}` : "none" }}>
                       <div>
