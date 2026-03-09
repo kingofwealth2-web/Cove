@@ -1,11 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
 import { useCountUp } from "../hooks/useCountUp";
 import ProgressBar from "../components/ui/ProgressBar";
 import Label from "../components/ui/Label";
 
+function useIsMobile() {
+  const [m, setM] = useState(window.innerWidth < 768);
+  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+  return m;
+}
+
+
 
 export default function BudgetScreen({ transactions, categories, setCategories, user, C }) {
+  const isMobile = useIsMobile();
   const [monthOffset, setMonthOffset] = useState(0);
   const [expanded, setExpanded] = useState(null);
   const [method, setMethod] = useState("envelope");

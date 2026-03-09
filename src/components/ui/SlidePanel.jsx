@@ -3,8 +3,14 @@ import { springs } from "../../tokens/springs";
 
 export default function SlidePanel({ children, onClose, C, title }) {
   const [vis, setVis] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  useEffect(() => { setTimeout(() => setVis(true), 10); }, []);
+  useEffect(() => {
+    setTimeout(() => setVis(true), 10);
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
 
   const close = () => { setVis(false); setTimeout(onClose, 380); };
 
@@ -14,20 +20,31 @@ export default function SlidePanel({ children, onClose, C, title }) {
       background: vis ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0)",
       backdropFilter: vis ? "blur(8px)" : "none",
       transition: `all 350ms ${springs.snap}`,
-      display: "flex", alignItems: "stretch", justifyContent: "flex-end",
+      display: "flex", alignItems: isMobile ? "flex-end" : "stretch", justifyContent: isMobile ? "center" : "flex-end",
     }}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: 440, maxWidth: "95vw",
-        background: C.surface, borderLeft: `1px solid ${C.border}`,
+        width: isMobile ? "100%" : 440,
+        maxWidth: isMobile ? "100%" : "95vw",
+        maxHeight: isMobile ? "92vh" : "100vh",
+        background: C.surface,
+        borderLeft: isMobile ? "none" : `1px solid ${C.border}`,
+        borderTop: isMobile ? `1px solid ${C.border}` : "none",
+        borderRadius: isMobile ? "20px 20px 0 0" : 0,
         display: "flex", flexDirection: "column",
-        transform: vis ? "translateX(0)" : "translateX(100%)",
+        transform: vis
+          ? "translateY(0) translateX(0)"
+          : isMobile ? "translateY(100%)" : "translateX(100%)",
         transition: `transform 380ms ${springs.bounce}`,
-        boxShadow: "-24px 0 64px rgba(0,0,0,0.5)",
+        boxShadow: isMobile ? "0 -16px 48px rgba(0,0,0,0.4)" : "-24px 0 64px rgba(0,0,0,0.5)",
         overflowY: "auto",
       }}>
+        {isMobile && (
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "12px auto 0" }} />
+        )}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "28px 28px 20px", borderBottom: `1px solid ${C.border}`, flexShrink: 0,
+          padding: isMobile ? "16px 20px 14px" : "28px 28px 20px",
+          borderBottom: `1px solid ${C.border}`, flexShrink: 0,
         }}>
           <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: C.text }}>{title}</span>
           <button onClick={close} style={{

@@ -1,10 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
 import { useCountUp } from "../hooks/useCountUp";
 import GoalRing from "../components/ui/GoalRing";
 import ProgressBar from "../components/ui/ProgressBar";
 import Modal from "../components/ui/Modal";
 import Label from "../components/ui/Label";
+
+function useIsMobile() {
+  const [m, setM] = useState(window.innerWidth < 768);
+  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+  return m;
+}
+
 
 
 function GoalCard({ goal, i, user, C, onAddMoney, onTogglePause }) {
@@ -57,6 +64,7 @@ function GoalCard({ goal, i, user, C, onAddMoney, onTogglePause }) {
 }
 
 export default function GoalsScreen({ goals, setGoals, user, C }) {
+  const isMobile = useIsMobile();
   const [addMoneyGoal, setAddMoneyGoal] = useState(null);
   const [addAmount, setAddAmount] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -85,7 +93,7 @@ export default function GoalsScreen({ goals, setGoals, user, C }) {
         <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 48, color: C.income, letterSpacing: "-1.5px" }}>{user.currency} {savedNum.toLocaleString()}</div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
         {goals.map((goal, i) => <GoalCard key={goal.id} goal={goal} i={i} user={user} C={C} onAddMoney={setAddMoneyGoal} onTogglePause={() => setGoals(gs => gs.map(g => g.id === goal.id ? { ...g, paused: !g.paused } : g))} />)}
       </div>
 

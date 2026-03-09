@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { springs } from "../../tokens/springs";
 
 const NAV = [
@@ -11,15 +12,31 @@ const NAV = [
   { id: "settings", label: "Settings", emoji: "⚙️" },
 ];
 
-export default function Sidebar({ active, setActive, onAdd, user, C, notifications }) {
+export default function Sidebar({ active, setActive, onAdd, user, C, notifications, mobileOpen, onMobileClose }) {
   const unread = notifications.filter(n => !n.read).length;
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  return (
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
+  const handleNav = (id) => {
+    setActive(id);
+    if (isMobile) onMobileClose();
+  };
+
+  const sidebarContent = (
     <aside style={{
       width: 224, minWidth: 224, height: "100vh",
       background: C.surface, borderRight: `1px solid ${C.border}`,
       display: "flex", flexDirection: "column", padding: "24px 0",
-      position: "sticky", top: 0,
+      position: isMobile ? "fixed" : "sticky",
+      top: 0, left: 0, zIndex: isMobile ? 300 : "auto",
+      transform: isMobile ? (mobileOpen ? "translateX(0)" : "translateX(-100%)") : "none",
+      transition: `transform 350ms ${springs.bounce}`,
+      boxShadow: isMobile && mobileOpen ? "8px 0 40px rgba(0,0,0,0.5)" : "none",
     }}>
       <div style={{ padding: "0 20px 28px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -37,19 +54,24 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
           </div>
           <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: C.text, letterSpacing: "-0.5px" }}>Cove</span>
         </div>
-        <button onClick={() => setActive("notifications")} style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
-          <span style={{ fontSize: 18 }}>🔔</span>
-          {unread > 0 && (
-            <div style={{ position: "absolute", top: 0, right: 0, width: 8, height: 8, borderRadius: "50%", background: C.expense, border: `2px solid ${C.surface}` }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={() => handleNav("notifications")} style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
+            <span style={{ fontSize: 18 }}>🔔</span>
+            {unread > 0 && (
+              <div style={{ position: "absolute", top: 0, right: 0, width: 8, height: 8, borderRadius: "50%", background: C.expense, border: `2px solid ${C.surface}` }} />
+            )}
+          </button>
+          {isMobile && (
+            <button onClick={onMobileClose} style={{ background: C.surfaceAlt, border: "none", cursor: "pointer", borderRadius: 8, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: C.textSub, fontSize: 16 }}>×</button>
           )}
-        </button>
+        </div>
       </div>
 
       <nav style={{ flex: 1, padding: "0 10px", display: "flex", flexDirection: "column", gap: 2 }}>
         {NAV.map((item, i) => {
           const isActive = active === item.id;
           return (
-            <button key={item.id} onClick={() => setActive(item.id)} style={{
+            <button key={item.id} onClick={() => handleNav(item.id)} style={{
               display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
               borderRadius: 12, border: "none", cursor: "pointer",
               background: isActive ? C.accentSoft : "transparent",
@@ -71,7 +93,7 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
       </nav>
 
       <div style={{ padding: "12px 10px 10px" }}>
-        <button onClick={onAdd} style={{
+        <button onClick={() => { onAdd(); if (isMobile) onMobileClose(); }} style={{
           width: "100%", padding: "12px", background: C.accent, color: "white",
           border: "none", borderRadius: 14, cursor: "pointer", fontSize: 14, fontWeight: 700,
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -79,8 +101,6 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
         }}
         onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.1)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
         onMouseLeave={e => { e.currentTarget.style.filter = ""; e.currentTarget.style.transform = ""; }}
-        onMouseDown={e => e.currentTarget.style.transform = "scale(0.97)"}
-        onMouseUp={e => e.currentTarget.style.transform = "translateY(-1px)"}
         >+ Add Transaction</button>
       </div>
 
@@ -100,4 +120,21 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
       </div>
     </aside>
   );
+
+  if (isMobile) {
+    return (
+      <>
+        {mobileOpen && (
+          <div onClick={onMobileClose} style={{
+            position: "fixed", inset: 0, zIndex: 299,
+            background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
+            animation: `fadeIn 200ms ${springs.snap}`,
+          }} />
+        )}
+        {sidebarContent}
+      </>
+    );
+  }
+
+  return sidebarContent;
 }

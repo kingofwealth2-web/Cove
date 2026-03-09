@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { springs } from "../tokens/springs";
 import { useCountUp } from "../hooks/useCountUp";
@@ -7,8 +7,16 @@ import Modal from "../components/ui/Modal";
 import Label from "../components/ui/Label";
 import { NET_WORTH_HISTORY } from "../data/initial";
 
+function useIsMobile() {
+  const [m, setM] = useState(window.innerWidth < 768);
+  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+  return m;
+}
+
+
 
 export default function NetWorthScreen({ assets, setAssets, liabilities, setLiabilities, user, C }) {
+  const isMobile = useIsMobile();
   const [editAsset, setEditAsset] = useState(null);
   const [editLiability, setEditLiability] = useState(null);
   const [showAddAsset, setShowAddAsset] = useState(false);

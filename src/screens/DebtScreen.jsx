@@ -1,9 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
 import { useCountUp } from "../hooks/useCountUp";
 import ProgressBar from "../components/ui/ProgressBar";
 import Modal from "../components/ui/Modal";
 import Label from "../components/ui/Label";
+
+function useIsMobile() {
+  const [m, setM] = useState(window.innerWidth < 768);
+  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+  return m;
+}
+
 
 
 function DebtCard({ debt, i, user, C, onPayment }) {
@@ -55,6 +62,7 @@ function DebtCard({ debt, i, user, C, onPayment }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function DebtScreen({ debts, setDebts, user, C }) {
+  const isMobile = useIsMobile();
   const [method, setMethod] = useState("snowball");
   const [showAdd, setShowAdd] = useState(false);
   const [newDebt, setNewDebt] = useState({ lender: "", originalAmount: "", currentBalance: "", interestRate: "", minimumPayment: "", dueDay: "", type: "loan" });

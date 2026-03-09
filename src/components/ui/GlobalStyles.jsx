@@ -4,7 +4,8 @@ export default function GlobalStyles({ C }) {
       @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap');
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       html, body { height: 100%; }
-      body { background: ${C.background}; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; margin: 0; }      input, button, textarea, select { font-family: 'DM Sans', sans-serif; }
+      body { background: ${C.background}; font-family: 'DM Sans', sans-serif; -webkit-font-smoothing: antialiased; }
+      input, button, textarea, select { font-family: 'DM Sans', sans-serif; }
       ::-webkit-scrollbar { width: 4px; height: 4px; }
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: ${C.border}; border-radius: 99px; }

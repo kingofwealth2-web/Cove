@@ -7,6 +7,7 @@ import { useSupabaseData } from "./hooks/useSupabaseData";
 import GlobalStyles from "./components/ui/GlobalStyles";
 import Toast from "./components/ui/Toast";
 import Sidebar from "./components/layout/Sidebar";
+import MobileTopBar from "./components/layout/MobileTopBar";
 
 import AuthScreen from "./screens/AuthScreen";
 import Onboarding from "./screens/Onboarding";
@@ -30,6 +31,14 @@ export default function App() {
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState(null);
   const [animKey, setAnimKey] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -52,7 +61,6 @@ export default function App() {
   const base = theme === "dark" ? darkColors : lightColors;
   const C = { ...base, accent: accentChoice.value, accentSoft: accentChoice.soft, accentGlow: accentChoice.glow };
 
-  // Sync theme/accent from profile
   useEffect(() => {
     if (profile) {
       setTheme(profile.theme || "dark");
@@ -93,7 +101,6 @@ export default function App() {
     }).eq("id", session.user.id);
   };
 
-  // ── Loading spinner ──────────────────────────────────────────────────────
   if (authLoading || (session && loading)) {
     return (
       <div style={{ minHeight: "100vh", background: "#0A0A0F", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -104,10 +111,7 @@ export default function App() {
   }
 
   if (!session) return <AuthScreen />;
-
-  if (!profile) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
-  }
+  if (!profile) return <Onboarding onComplete={handleOnboardingComplete} />;
 
   const screens = {
     home: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} />,
@@ -125,13 +129,30 @@ export default function App() {
     <>
       <GlobalStyles C={C} />
       <div style={{ display: "flex", minHeight: "100vh", background: C.background }}>
-        <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={notifications} />
-        <main key={animKey} style={{
-          flex: 1, padding: "44px 52px", overflowY: "auto", maxHeight: "100vh",
-          animation: `slideUp 280ms ${springs.bounce}`,
-        }}>
-          {screens[active] || screens.home}
-        </main>
+        <Sidebar
+          active={active} setActive={navigate} onAdd={() => setShowAdd(true)}
+          user={user} C={C} notifications={notifications}
+          mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)}
+        />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          {isMobile && (
+            <MobileTopBar
+              onMenuOpen={() => setSidebarOpen(true)}
+              onAdd={() => setShowAdd(true)}
+              C={C}
+              notifications={notifications}
+            />
+          )}
+          <main key={animKey} style={{
+            flex: 1,
+            padding: isMobile ? "20px 16px" : "44px 52px",
+            overflowY: "auto",
+            maxHeight: isMobile ? "calc(100vh - 60px)" : "100vh",
+            animation: `slideUp 280ms ${springs.bounce}`,
+          }}>
+            {screens[active] || screens.home}
+          </main>
+        </div>
       </div>
       {showAdd && (
         <AddTransactionPanel

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { springs } from "../tokens/springs";
 
@@ -36,11 +36,18 @@ export default function AuthScreen({ onAuth }) {
     expense: "#FF375F",
   };
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+
   return (
     <div style={{ minHeight: "100vh", background: C.background, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div style={{
-        width: "100%", maxWidth: 400,
-        background: C.surface, borderRadius: 24, padding: 40,
+        width: "100%", maxWidth: isMobile ? "100%" : 400,
+        background: C.surface, borderRadius: isMobile ? 0 : 24, padding: isMobile ? "40px 24px" : 40,
         border: `1px solid ${C.borderStrong}`,
         boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
         animation: `slideUp 400ms ${springs.bounce}`,

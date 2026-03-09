@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
 import Modal from "../components/ui/Modal";
 import Label from "../components/ui/Label";
 
+function useIsMobile() {
+  const [m, setM] = useState(window.innerWidth < 768);
+  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+  return m;
+}
+
+
 
 export default function BillsScreen({ bills, setBills, user, C }) {
+  const isMobile = useIsMobile();
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const calDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);

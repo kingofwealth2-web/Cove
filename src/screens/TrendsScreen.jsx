@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Area, AreaChart } from "recharts";
 import { springs } from "../tokens/springs";
 import { TREND_DATA } from "../data/initial";
 
+function useIsMobile() {
+  const [m, setM] = useState(window.innerWidth < 768);
+  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+  return m;
+}
+
+
 
 export default function TrendsScreen({ transactions, categories, user, C }) {
+  const isMobile = useIsMobile();
   const [selectedMonth, setSelectedMonth] = useState(5);
   const months = ["Oct", "Nov", "Dec", "Jan", "Feb", "Mar"];
 

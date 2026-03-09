@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
 import { useCountUp } from "../hooks/useCountUp";
 import ProgressBar from "../components/ui/ProgressBar";
 import Label from "../components/ui/Label";
+
+function useIsMobile() {
+  const [m, setM] = useState(window.innerWidth < 768);
+  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+  return m;
+}
 
 
 function DashCatCard({ cat, i, user, C }) {
@@ -60,6 +66,7 @@ function TxRow({ tx, i, isLast, categories, user, C, formatDate }) {
 }
 
 export default function Dashboard({ transactions, categories, user, C, onAdd }) {
+  const isMobile = useIsMobile();
   const now = new Date();
   const monthTx = transactions.filter(t => {
     const d = new Date(t.date);
@@ -107,14 +114,14 @@ export default function Dashboard({ transactions, categories, user, C, onAdd }) 
       {/* Hero */}
       <div style={{
         background: `linear-gradient(135deg, ${C.surfaceAlt} 0%, ${C.surface} 100%)`,
-        borderRadius: 24, padding: "32px 36px",
+        borderRadius: 24, padding: isMobile ? "24px 20px" : "32px 36px",
         border: `1px solid ${C.borderStrong}`, boxShadow: C.shadowLg,
         position: "relative", overflow: "hidden",
         animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "40ms",
       }}>
         <div style={{ position: "absolute", top: -80, right: -80, width: 280, height: 280, background: `radial-gradient(circle, ${C.accentGlow} 0%, transparent 70%)`, pointerEvents: "none" }} />
         <Label C={C} style={{ marginBottom: 8 }}>Available This Month</Label>
-        <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 68, fontWeight: 700, letterSpacing: "-2px", color: safeToSpend >= 0 ? C.text : C.expense, lineHeight: 1, marginBottom: 20 }}>
+        <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: isMobile ? 48 : 68, fontWeight: 700, letterSpacing: "-2px", color: safeToSpend >= 0 ? C.text : C.expense, lineHeight: 1, marginBottom: 20 }}>
           {user.currency} {safeNum.toLocaleString()}
         </div>
         <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
@@ -150,7 +157,7 @@ export default function Dashboard({ transactions, categories, user, C, onAdd }) 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: C.text, letterSpacing: "-0.3px" }}>Budget</h2>
         </div>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: isMobile ? "grid" : "flex", gridTemplateColumns: isMobile ? "1fr 1fr" : undefined, gap: 12, flexWrap: "wrap" }}>
           {catSpend.map((cat, i) => <DashCatCard key={cat.id} cat={cat} i={i} user={user} C={C} />)}
         </div>
       </div>

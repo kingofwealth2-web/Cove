@@ -1,9 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
 import { accentOptions } from "../tokens/colors";
 
+function useIsMobile() {
+  const [m, setM] = useState(window.innerWidth < 768);
+  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
+  return m;
+}
+
+
 
 export default function SettingsScreen({ user, setUser, C, setTheme, theme, accentChoice, setAccentChoice, onSignOut }) {
+  const isMobile = useIsMobile();
   const [notifToggles, setNotifToggles] = useState({ budgetWarning: true, overBudget: true, billReminder: true, streak: true, monthlyRecap: true, anomaly: false });
   const [method, setMethod] = useState("envelope");
   const [pinEnabled, setPinEnabled] = useState(false);
