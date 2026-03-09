@@ -22,6 +22,7 @@ import GoalsScreen from "./screens/GoalsScreen";
 import DebtScreen from "./screens/DebtScreen";
 import NetWorthScreen from "./screens/NetWorthScreen";
 import RecurringScreen from "./screens/RecurringScreen";
+import NotificationsScreen from "./screens/NotificationsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 
 export default function App() {
