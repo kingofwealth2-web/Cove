@@ -29,7 +29,6 @@ function UserCard({ user, C, onSignOut, springs }) {
       onMouseLeave={() => setHovered(false)}
       style={{ borderRadius: 14, border: `1px solid ${hovered ? C.borderStrong : C.border}`, overflow: "hidden", transition: `all 250ms ${springs.snap}`, boxShadow: hovered ? C.shadow : "none" }}
     >
-      {/* Main user row */}
       <div style={{ padding: "12px 14px", background: C.surfaceAlt, display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ width: 34, height: 34, borderRadius: 10, background: `linear-gradient(135deg, ${C.accent}, ${C.accentDark || C.accent})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "white", flexShrink: 0, boxShadow: `0 2px 8px ${C.accentGlow}` }}>
           {user.name.charAt(0).toUpperCase()}
@@ -40,38 +39,24 @@ function UserCard({ user, C, onSignOut, springs }) {
         </div>
         <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.income, boxShadow: `0 0 6px ${C.income}`, flexShrink: 0 }} />
       </div>
-
-      {/* Sign out row */}
-      <div style={{
-        maxHeight: hovered ? 52 : 0,
-        opacity: hovered ? 1 : 0,
-        overflow: "hidden",
-        transition: `max-height 280ms ${springs.snap}, opacity 220ms ease`,
+      <button onClick={onSignOut} style={{
+        width: "100%", padding: "9px 14px",
+        background: hovered ? C.expenseSoft : C.surface,
+        borderTop: `1px solid ${C.border}`,
+        border: "none",
+        cursor: "pointer",
+        display: "flex", alignItems: "center", gap: 8,
+        color: hovered ? C.expense : C.textMuted,
+        fontSize: 12, fontWeight: 600,
+        transition: `all 200ms ${springs.snap}`,
       }}>
-        <button onClick={onSignOut} style={{
-          width: "100%", padding: "12px 14px",
-          background: C.surface,
-          borderTop: `1px solid ${C.border}`,
-          borderLeft: `3px solid ${C.expense}`,
-          border: "none",
-          borderTop: `1px solid ${C.border}`,
-          cursor: "pointer",
-          display: "flex", alignItems: "center", gap: 10,
-          color: C.expense, fontSize: 13, fontWeight: 600,
-          transition: `background 150ms`,
-          textAlign: "left",
-        }}
-        onMouseEnter={e => e.currentTarget.style.background = C.expenseSoft}
-        onMouseLeave={e => e.currentTarget.style.background = C.surface}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-          Sign out
-        </button>
-      </div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Sign out
+      </button>
     </div>
   );
 }
