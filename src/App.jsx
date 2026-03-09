@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { darkColors, lightColors, accentOptions } from "./tokens/colors";
 import { springs } from "./tokens/springs";
 import { supabase } from "./lib/supabase";
+import { hashPin } from "./lib/pinUtils";
 import { useSupabaseData } from "./hooks/useSupabaseData";
 
 import GlobalStyles from "./components/ui/GlobalStyles";
@@ -41,6 +42,17 @@ export default function App() {
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
+
+  // Re-lock when app comes back to foreground (PWA resume)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && pinHash) {
+        setPinLocked(true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [pinHash]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -150,7 +162,15 @@ export default function App() {
   const handleAccentChange = (a) => { setAccentChoice(a); saveSettings({ accentColor: a.value }); };
   const handleBudgetMethodChange = (m) => { saveSettings({ budgetMethod: m }); };
   const handleNotifSettingsChange = (ns) => { saveSettings({ notifSettings: ns }); };
-  const handleSetPin = (pin) => { saveSettings({ pinHash: pin || null }); };
+  const handleSetPin = async (pin) => {
+    if (pin) {
+      const hashed = await hashPin(pin);
+      await saveSettings({ pinHash: hashed });
+      setPinLocked(true);
+    } else {
+      await saveSettings({ pinHash: null });
+    }
+  };
 
   const setUser = async (updater) => {
     const next = typeof updater === "function" ? updater(user) : updater;
