@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { darkColors, lightColors, accentOptions } from "./tokens/colors";
 import { springs } from "./tokens/springs";
 import { supabase } from "./lib/supabase";
@@ -111,7 +111,12 @@ export default function App() {
       });
   }, [profile?.id, transactions.length]);
 
-  const navigate = (screen) => { setActive(screen); setAnimKey(k => k + 1); };
+  const navigate = (screen) => {
+    if (screen !== active) {
+      setActive(screen);
+      setAnimKey(k => k + 1);
+    }
+  };
 
   const handleAddTransaction = async (tx) => {
     await addTransaction(tx);
@@ -159,7 +164,7 @@ export default function App() {
   // Prevent onboarding from running twice — only show if profile truly missing
   if (!profile && !loading) return <Onboarding onComplete={handleOnboardingComplete} />;
 
-  const screens = {
+  const screens = useMemo(() => ({
     home:          <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} />,
     budget:        <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} />,
     trends:        <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} />,
@@ -169,7 +174,8 @@ export default function App() {
     networth:      <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} />,
     notifications: <NotificationsScreen notifications={notifications} setNotifications={() => {}} C={C} />,
     settings:      <SettingsScreen user={user} setUser={setUser} C={C} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} />,
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [transactions, categories, bills, goals, debts, assets, liabilities, notifications, snapshots, user, C, theme, accentChoice]);
 
   return (
     <>
@@ -178,8 +184,15 @@ export default function App() {
         <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={notifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {isMobile && <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => setShowAdd(true)} C={C} notifications={notifications} />}
-          <main key={animKey} style={{ flex: 1, padding: isMobile ? "20px 16px" : "44px 52px", overflowY: "auto", maxHeight: isMobile ? "calc(100vh - 60px)" : "100vh", animation: `slideUp 280ms ${springs.bounce}` }}>
-            {screens[active] || screens.home}
+          <main style={{
+            flex: 1,
+            padding: isMobile ? "20px 16px" : "44px 52px",
+            overflowY: "auto",
+            maxHeight: isMobile ? "calc(100vh - 60px)" : "100vh",
+          }}>
+            <div key={animKey} style={{ animation: `slideUp 280ms ${springs.bounce}` }}>
+              {screens[active] || screens.home}
+            </div>
           </main>
         </div>
       </div>

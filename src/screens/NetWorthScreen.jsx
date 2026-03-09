@@ -214,7 +214,3 @@ export default function NetWorthScreen({ assets, setAssets, liabilities, setLiab
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// NOTIFICATIONS SCREEN
-// ─────────────────────────────────────────────────────────────────────────────
