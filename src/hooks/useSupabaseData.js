@@ -116,6 +116,21 @@ export function useSupabaseData(session) {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  // Reset all state on sign out
+  useEffect(() => {
+    if (!uid) {
+      setProfile(null);
+      setTransactionsState([]);
+      setCategoriesState([]);
+      setBillsState([]);
+      setGoalsState([]);
+      setDebtsState([]);
+      setAssetsState([]);
+      setLiabilitiesState([]);
+      setSnapshots([]);
+    }
+  }, [uid]);
+
   // ── Monthly bill reset ───────────────────────────────────────────────────
   useEffect(() => {
     if (!uid || !profile || !bills.length) return;
