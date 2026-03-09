@@ -53,7 +53,7 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
         </div>
         <div style={{ display: "flex", background: C.surfaceAlt, borderRadius: 10, padding: 3, gap: 3 }}>
           {["envelope", "flexible"].map(m => (
-            <button key={m} onClick={() => setMethod(m)} style={{
+            <button key={m} onClick={() => onBudgetMethodChange && onBudgetMethodChange(m)} style={{
               padding: "7px 14px", borderRadius: 8, border: "none", cursor: "pointer",
               background: method === m ? C.surface : "transparent",
               color: method === m ? C.text : C.textMuted,

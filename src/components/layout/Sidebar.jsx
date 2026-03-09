@@ -2,14 +2,15 @@ import { useState, useEffect } from "react";
 import { springs } from "../../tokens/springs";
 
 const NAV = [
-  { id: "home",     label: "Home",      emoji: "🏠" },
-  { id: "budget",   label: "Budget",    emoji: "📊" },
-  { id: "trends",   label: "Trends",    emoji: "📈" },
-  { id: "bills",    label: "Bills",     emoji: "📋" },
-  { id: "goals",    label: "Goals",     emoji: "🎯" },
-  { id: "debt",     label: "Debt",      emoji: "💳" },
-  { id: "networth", label: "Net Worth", emoji: "🏦" },
-  { id: "settings", label: "Settings",  emoji: "⚙️" },
+  { id: "home",      label: "Home",        emoji: "🏠" },
+  { id: "budget",    label: "Budget",      emoji: "📊" },
+  { id: "trends",    label: "Trends",      emoji: "📈" },
+  { id: "recurring", label: "Recurring",   emoji: "🔄" },
+  { id: "bills",     label: "Bills",       emoji: "📋" },
+  { id: "goals",     label: "Goals",       emoji: "🎯" },
+  { id: "debt",      label: "Debt",        emoji: "💳" },
+  { id: "networth",  label: "Net Worth",   emoji: "🏦" },
+  { id: "settings",  label: "Settings",    emoji: "⚙️" },
 ];
 
 const CoveLogo = ({ size = 18 }) => (

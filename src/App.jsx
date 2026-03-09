@@ -21,7 +21,7 @@ import BillsScreen from "./screens/BillsScreen";
 import GoalsScreen from "./screens/GoalsScreen";
 import DebtScreen from "./screens/DebtScreen";
 import NetWorthScreen from "./screens/NetWorthScreen";
-import NotificationsScreen from "./screens/NotificationsScreen";
+import RecurringScreen from "./screens/RecurringScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 
 export default function App() {
@@ -203,8 +203,9 @@ export default function App() {
 
   const SCREENS = [
     { id: "home",          el: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} /> },
-    { id: "budget",        el: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} budgetMethod={budgetMethod} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} /> },
+    { id: "budget",        el: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} /> },
     { id: "trends",        el: <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} /> },
+    { id: "recurring",     el: <RecurringScreen transactions={transactions} categories={categories} user={user} C={C} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} /> },
     { id: "bills",         el: <BillsScreen bills={bills} setBills={setBills} user={user} C={C} /> },
     { id: "goals",         el: <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} /> },
     { id: "debt",          el: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} /> },
