@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { darkColors, lightColors, accentOptions } from "../tokens/colors";
 import { springs } from "../tokens/springs";
 import GlobalStyles from "../components/ui/GlobalStyles";
@@ -10,8 +10,15 @@ export default function Onboarding({ onComplete }) {
   const [currency, setCurrency] = useState("GHS");
   const [accent, setAccent] = useState(accentOptions[0]);
   const [theme, setTheme] = useState("dark");
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const C = theme === "dark" ? darkColors : lightColors;
   const accentC = { ...C, accent: accent.value, accentSoft: accent.soft, accentGlow: accent.glow };
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
 
   const numpadKeys = ["1","2","3","4","5","6","7","8","9",".","0","⌫"];
   const handleIncome = (k) => {
@@ -61,18 +68,32 @@ export default function Onboarding({ onComplete }) {
         <select value={currency} onChange={e => setCurrency(e.target.value)} style={{ background: accentC.surfaceAlt, border: `1px solid ${accentC.border}`, borderRadius: 10, padding: "6px 12px", color: accentC.textSub, fontSize: 13, outline: "none", marginBottom: 12 }}>
           <option>GHS</option><option>USD</option><option>EUR</option><option>GBP</option><option>NGN</option>
         </select>
-        <div style={{ fontFamily: "\'DM Serif Display\', serif", fontSize: 64, color: income ? accentC.text : accentC.textMuted, letterSpacing: "-2px", lineHeight: 1 }}>
-          {income ? `${currency} ${income}` : `${currency} 0`}
+        {isMobile ? (
+          <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: 64, color: income ? accentC.text : accentC.textMuted, letterSpacing: "-2px", lineHeight: 1 }}>
+            {income ? `${currency} ${income}` : `${currency} 0`}
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, background: accentC.surfaceAlt, borderRadius: 16, padding: "16px 24px", maxWidth: 360, margin: "0 auto", border: `1px solid ${accentC.border}` }}>
+            <span style={{ fontSize: 20, fontWeight: 600, color: accentC.textMuted }}>{currency}</span>
+            <input
+              autoFocus type="number" min="0" step="0.01" placeholder="0.00"
+              value={income} onChange={e => setIncome(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && income && setStep(2)}
+              style={{ background: "none", border: "none", outline: "none", fontSize: 40, fontFamily: "'DM Serif Display', serif", color: accentC.text, letterSpacing: "-1px", width: 200, textAlign: "center" }}
+            />
+          </div>
+        )}
+      </div>
+      {isMobile && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, maxWidth: 360, margin: "0 auto", width: "100%" }}>
+          {numpadKeys.map(k => (
+            <button key={k} onClick={() => handleIncome(k)} style={{ padding: "18px", borderRadius: 16, border: "none", background: accentC.surfaceAlt, color: accentC.text, fontSize: 20, fontWeight: 600, cursor: "pointer" }}
+            onMouseDown={e => e.currentTarget.style.transform = "scale(0.93)"}
+            onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}
+            >{k}</button>
+          ))}
         </div>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, maxWidth: 360, margin: "0 auto", width: "100%" }}>
-        {numpadKeys.map(k => (
-          <button key={k} onClick={() => handleIncome(k)} style={{ padding: "18px", borderRadius: 16, border: "none", background: accentC.surfaceAlt, color: accentC.text, fontSize: 20, fontWeight: 600, cursor: "pointer" }}
-          onMouseDown={e => e.currentTarget.style.transform = "scale(0.93)"}
-          onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}
-          >{k}</button>
-        ))}
-      </div>
+      )}
       <button disabled={!income} onClick={() => setStep(2)} style={{
         padding: "15px", background: income ? accentC.accent : accentC.surfaceAlt,
         color: income ? "white" : accentC.textMuted, border: "none", borderRadius: 16,
