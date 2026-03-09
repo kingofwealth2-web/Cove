@@ -107,12 +107,42 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
           )}
         </div>
         {!collapsed && !isMobile && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <button onClick={() => handleNav("notifications")} style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
               <span style={{ fontSize: 18 }}>🔔</span>
               {unread > 0 && <div style={{ position: "absolute", top: 0, right: 0, width: 8, height: 8, borderRadius: "50%", background: C.expense, border: `2px solid ${C.surface}` }} />}
             </button>
+            <button onClick={() => setCollapsed(true)} title="Collapse sidebar" style={{
+              background: "none", border: "none", cursor: "pointer", padding: 6,
+              color: C.textMuted, display: "flex", alignItems: "center", justifyContent: "center",
+              borderRadius: 10, transition: `all 200ms ${springs.snap}`,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.accentSoft; e.currentTarget.style.color = C.accent; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = C.textMuted; }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                <line x1="9" y1="3" x2="9" y2="21" opacity="0.4"/>
+                <polyline points="13 8 8.5 12 13 16"/>
+              </svg>
+            </button>
           </div>
+        )}
+        {collapsed && !isMobile && (
+          <button onClick={() => setCollapsed(false)} title="Expand sidebar" style={{
+            background: "none", border: "none", cursor: "pointer", padding: 6,
+            color: C.textMuted, display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: 10, transition: `all 200ms ${springs.snap}`,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.accentSoft; e.currentTarget.style.color = C.accent; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = C.textMuted; }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="3"/>
+              <line x1="9" y1="3" x2="9" y2="21" opacity="0.4"/>
+              <polyline points="11 8 15.5 12 11 16"/>
+            </svg>
+          </button>
         )}
         {isMobile && !collapsed && (
           <button onClick={onMobileClose} style={{ background: C.surfaceAlt, border: "none", cursor: "pointer", borderRadius: 8, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: C.textSub, fontSize: 16 }}>×</button>
@@ -148,8 +178,23 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
         })}
       </nav>
 
-      {/* Bottom: Add Transaction + User + Collapse */}
+      {/* Bottom: Theme toggle + Add Transaction + User card */}
       <div style={{ marginTop: "auto", padding: "12px 8px 0", display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* Theme toggle */}
+        <button onClick={onThemeToggle} title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} style={{
+          width: "100%", padding: collapsed ? "10px 0" : "10px 12px",
+          background: "none", border: `1px solid ${C.border}`,
+          borderRadius: 12, cursor: "pointer", fontSize: collapsed ? 18 : 13,
+          display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start", gap: 8,
+          color: C.textMuted, transition: `all 200ms ${springs.snap}`,
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = C.textMuted; }}
+        >
+          <span>{theme === "dark" ? "☀️" : "🌙"}</span>
+          {!collapsed && (theme === "dark" ? "Light mode" : "Dark mode")}
+        </button>
+
         <button onClick={() => { onAdd(); if (isMobile) onMobileClose(); }} style={{
           width: "100%", padding: collapsed ? "12px 0" : "12px", background: C.accent, color: "white",
           border: "none", borderRadius: 14, cursor: "pointer", fontSize: collapsed ? 20 : 14, fontWeight: 700,
@@ -159,36 +204,9 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
         onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.1)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
         onMouseLeave={e => { e.currentTarget.style.filter = ""; e.currentTarget.style.transform = ""; }}
         >{collapsed ? "+" : "+ Add Transaction"}</button>
+
         {!collapsed && (
           <UserCard user={user} C={C} onSignOut={onSignOut} springs={springs} />
-        )}
-        {!isMobile && (
-          <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={() => setCollapsed(c => !c)} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} style={{
-              flex: 1, padding: "10px 0", background: "none", border: `1px solid ${C.border}`,
-              borderRadius: 12, cursor: "pointer", color: C.textMuted, fontSize: collapsed ? 18 : 14,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              transition: `all 200ms ${springs.snap}`,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = C.textMuted; }}
-            >
-              {collapsed ? "›" : "‹ Collapse"}
-            </button>
-            {!collapsed && (
-              <button onClick={onThemeToggle} title={theme === "dark" ? "Switch to light" : "Switch to dark"} style={{
-                width: 40, padding: "10px 0", background: "none", border: `1px solid ${C.border}`,
-                borderRadius: 12, cursor: "pointer", fontSize: 16,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: `all 200ms ${springs.snap}`,
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
-              >
-                {theme === "dark" ? "☀️" : "🌙"}
-              </button>
-            )}
-          </div>
         )}
       </div>
     </aside>
