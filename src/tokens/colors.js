@@ -13,17 +13,35 @@ export const darkColors = {
 };
 
 export const lightColors = {
-  background: "#F5F5F7", surface: "#FFFFFF", surfaceAlt: "#F0F0F5",
-  surfaceHover: "#E8E8F0", border: "rgba(0,0,0,0.08)",
-  borderStrong: "rgba(0,0,0,0.15)", text: "#1A1A2E",
-  textSub: "rgba(26,26,46,0.55)", textMuted: "rgba(26,26,46,0.3)",
-  accent: "#4F52E8", accentSoft: "rgba(79,82,232,0.12)", accentGlow: "rgba(79,82,232,0.25)",
-  income: "#34C759", incomeSoft: "rgba(52,199,89,0.12)",
-  expense: "#FF375F", expenseSoft: "rgba(255,55,95,0.12)",
-  warning: "#FF9F0A", warningSoft: "rgba(255,159,10,0.12)",
-  savings: "#5AC8FA", savingsSoft: "rgba(90,200,250,0.12)",
-  shadow: "0 4px 20px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05)",
-  shadowLg: "0 16px 48px rgba(0,0,0,0.12)",
+  // Warm white base — not stark, not blue-grey
+  background: "#F7F6F3",
+  surface: "#FFFFFF",
+  surfaceAlt: "#F0EEE9",
+  surfaceHover: "#E8E5DE",
+
+  // Borders — soft warm grey, not harsh black lines
+  border: "rgba(60,55,45,0.09)",
+  borderStrong: "rgba(60,55,45,0.18)",
+
+  // Text — warm dark brown, not pure black (easier on eyes)
+  text: "#1C1917",
+  textSub: "rgba(28,25,23,0.6)",
+  textMuted: "rgba(28,25,23,0.38)",
+
+  // Accent — slightly more saturated for readability on light bg
+  accent: "#5254CC",
+  accentSoft: "rgba(82,84,204,0.10)",
+  accentGlow: "rgba(82,84,204,0.20)",
+
+  // Status colours — slightly deeper for contrast on light
+  income: "#1E9E48",       incomeSoft: "rgba(30,158,72,0.10)",
+  expense: "#D9294A",      expenseSoft: "rgba(217,41,74,0.10)",
+  warning: "#C97A08",      warningSoft: "rgba(201,122,8,0.10)",
+  savings: "#0A8FBF",      savingsSoft: "rgba(10,143,191,0.10)",
+
+  // Shadows — warm, subtle, not cold grey
+  shadow: "0 2px 12px rgba(60,55,45,0.08), 0 1px 3px rgba(60,55,45,0.05)",
+  shadowLg: "0 12px 40px rgba(60,55,45,0.12)",
 };
 
 export const accentOptions = [

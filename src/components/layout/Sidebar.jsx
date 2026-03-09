@@ -59,7 +59,7 @@ function UserCard({ user, C, onSignOut, springs }) {
   );
 }
 
-export default function Sidebar({ active, setActive, onAdd, user, C, notifications, mobileOpen, onMobileClose, onSignOut }) {
+export default function Sidebar({ active, setActive, onAdd, user, C, notifications, mobileOpen, onMobileClose, onSignOut, theme, onThemeToggle }) {
   const unread = notifications.filter(n => !n.read).length;
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [collapsed, setCollapsed] = useState(false);
@@ -166,17 +166,32 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
           <UserCard user={user} C={C} onSignOut={onSignOut} springs={springs} />
         )}
         {!isMobile && (
-          <button onClick={() => setCollapsed(c => !c)} style={{
-            width: "100%", padding: "10px 0", background: "none", border: `1px solid ${C.border}`,
-            borderRadius: 12, cursor: "pointer", color: C.textMuted, fontSize: 14,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-            transition: `all 200ms ${springs.snap}`,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = C.textMuted; }}
-          >
-            {collapsed ? "→" : "← Collapse"}
-          </button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => setCollapsed(c => !c)} style={{
+              flex: 1, padding: "10px 0", background: "none", border: `1px solid ${C.border}`,
+              borderRadius: 12, cursor: "pointer", color: C.textMuted, fontSize: 14,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              transition: `all 200ms ${springs.snap}`,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = C.textMuted; }}
+            >
+              {collapsed ? "→" : "← Collapse"}
+            </button>
+            {!collapsed && (
+              <button onClick={onThemeToggle} title={theme === "dark" ? "Switch to light" : "Switch to dark"} style={{
+                width: 40, padding: "10px 0", background: "none", border: `1px solid ${C.border}`,
+                borderRadius: 12, cursor: "pointer", fontSize: 16,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: `all 200ms ${springs.snap}`,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+              >
+                {theme === "dark" ? "☀️" : "🌙"}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </aside>

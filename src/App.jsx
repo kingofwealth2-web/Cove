@@ -179,9 +179,9 @@ export default function App() {
     <>
       <GlobalStyles C={C} />
       <div style={{ display: "flex", minHeight: "100vh", background: C.background }}>
-        <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={notifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} />
+        <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={notifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-          {isMobile && <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => setShowAdd(true)} C={C} notifications={notifications} />}
+          {isMobile && <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => setShowAdd(true)} C={C} notifications={notifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />}
           <main style={{
             flex: 1,
             padding: isMobile ? "20px 16px" : "44px 52px",
