@@ -30,7 +30,6 @@ export default function App() {
   const [active, setActive] = useState("home");
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState(null);
-  const [animKey, setAnimKey] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -114,7 +113,6 @@ export default function App() {
   const navigate = (screen) => {
     if (screen !== active) {
       setActive(screen);
-      setAnimKey(k => k + 1);
     }
   };
 
@@ -188,7 +186,7 @@ export default function App() {
             overflowY: "auto",
             maxHeight: isMobile ? "calc(100vh - 60px)" : "100vh",
           }}>
-            <div key={animKey} style={{ animation: `slideUp 280ms ${springs.bounce}` }}>
+            <div style={{ animation: `slideUp 280ms ${springs.bounce}` }} key={active}>
               {screens[active] || screens.home}
             </div>
           </main>
