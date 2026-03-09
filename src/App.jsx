@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { darkColors, lightColors, accentOptions } from "./tokens/colors";
 import { springs } from "./tokens/springs";
 import { supabase } from "./lib/supabase";
@@ -28,6 +28,7 @@ export default function App() {
   const [theme, setTheme] = useState("dark");
   const [accentChoice, setAccentChoice] = useState(accentOptions[0]);
   const [active, setActive] = useState("home");
+  const animatedScreens = useRef(new Set());
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -112,6 +113,7 @@ export default function App() {
 
   const navigate = (screen) => {
     if (screen !== active) {
+      animatedScreens.current.delete(screen);
       setActive(screen);
     }
   };
@@ -158,20 +160,27 @@ export default function App() {
     );
   }
 
-  if (!session) return <AuthScreen />;
   if (!profile && !loading) return <Onboarding onComplete={handleOnboardingComplete} />;
 
-  const screens = {
-    home:          <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} />,
-    budget:        <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} />,
-    trends:        <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} />,
-    bills:         <BillsScreen bills={bills} setBills={setBills} user={user} C={C} />,
-    goals:         <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} />,
-    debt:          <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} />,
-    networth:      <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} />,
-    notifications: <NotificationsScreen notifications={notifications} setNotifications={() => {}} C={C} />,
-    settings:      <SettingsScreen user={user} setUser={setUser} C={C} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} />,
+  const getScreenAnimation = (id) => {
+    if (id === active && !animatedScreens.current.has(id)) {
+      animatedScreens.current.add(id);
+      return `slideUp 280ms ${springs.bounce}`;
+    }
+    return "none";
   };
+
+  const SCREENS = [
+    { id: "home",          el: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} /> },
+    { id: "budget",        el: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} /> },
+    { id: "trends",        el: <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} /> },
+    { id: "bills",         el: <BillsScreen bills={bills} setBills={setBills} user={user} C={C} /> },
+    { id: "goals",         el: <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} /> },
+    { id: "debt",          el: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} /> },
+    { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} /> },
+    { id: "notifications", el: <NotificationsScreen notifications={notifications} setNotifications={() => {}} C={C} /> },
+    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} /> },
+  ];
 
   return (
     <>
@@ -182,13 +191,21 @@ export default function App() {
           {isMobile && <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => setShowAdd(true)} C={C} notifications={notifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />}
           <main style={{
             flex: 1,
-            padding: isMobile ? "20px 16px" : "44px 52px",
-            overflowY: "auto",
+            position: "relative",
             maxHeight: isMobile ? "calc(100vh - 60px)" : "100vh",
           }}>
-            <div style={{ animation: `slideUp 280ms ${springs.bounce}` }} key={active}>
-              {screens[active] || screens.home}
-            </div>
+            {SCREENS.map(({ id, el }) => (
+              <div key={id} style={{
+                display: active === id ? "block" : "none",
+                position: "absolute",
+                inset: 0,
+                overflowY: "auto",
+                padding: isMobile ? "20px 16px" : "44px 52px",
+                animation: getScreenAnimation(id),
+              }}>
+                {el}
+              </div>
+            ))}
           </main>
         </div>
       </div>
