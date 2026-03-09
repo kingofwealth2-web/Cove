@@ -11,8 +11,18 @@ export function useSupabaseData(session) {
   const [debts, setDebtsState] = useState([]);
   const [assets, setAssetsState] = useState([]);
   const [liabilities, setLiabilitiesState] = useState([]);
+  const [snapshots, setSnapshots] = useState([]);
+
+  const uid = session?.user?.id;
+
+  // ── Derived from profile ──────────────────────────────────────────────────
+  const DEFAULT_NOTIF = { budgetWarning: true, overBudget: true, billReminder: true, streak: true, monthlyRecap: true };
+  const notifSettings = profile?.notif_settings ? { ...DEFAULT_NOTIF, ...profile.notif_settings } : DEFAULT_NOTIF;
+  const budgetMethod  = profile?.budget_method || "envelope";
+  const pinHash       = profile?.pin_hash || null;
 
   const expenseCategories = categories.filter(c => !c.is_income);
+
   // ── Notifications generated from real data ──────────────────────────────
   const notifications = useMemo(() => {
     const now = new Date();
@@ -28,46 +38,39 @@ export function useSupabaseData(session) {
     const monthPct    = (dayOfMonth / daysInMonth) * 100;
     const spendPct    = totalIncome > 0 ? (totalSpent / totalIncome) * 100 : 0;
 
-    // Over budget categories
     expenseCategories.forEach(cat => {
       const spent = monthTx.filter(t => t.type === "expense" && t.categoryId === cat.id).reduce((s, t) => s + t.amount, 0);
-      if (cat.budget > 0 && spent > cat.budget) {
+      if (cat.budget > 0 && spent > cat.budget && notifSettings.overBudget) {
         items.push({ id: `over-${cat.id}`, type: "over", title: `${cat.name} budget exceeded`, body: `You've spent ${spent.toLocaleString()} of your ${cat.budget.toLocaleString()} budget.`, time: "This month", read: false });
-      } else if (cat.budget > 0 && spent / cat.budget > 0.8) {
+      } else if (cat.budget > 0 && spent / cat.budget > 0.8 && notifSettings.budgetWarning) {
         items.push({ id: `warn-${cat.id}`, type: "warning", title: `${cat.name} at 80%`, body: `You've used ${Math.round(spent/cat.budget*100)}% of your ${cat.name} budget.`, time: "This month", read: false });
       }
     });
 
-    // Spending pace
-    if (spendPct > monthPct + 15 && totalIncome > 0) {
+    if (spendPct > monthPct + 15 && totalIncome > 0 && notifSettings.budgetWarning) {
       items.push({ id: "pace", type: "warning", title: "Spending ahead of pace", body: `You've spent ${Math.round(spendPct)}% of income but we're only ${Math.round(monthPct)}% through the month.`, time: "Today", read: false });
     }
 
-    // Overdue bills
-    bills.filter(b => !b.paid && b.dueDay < dayOfMonth).forEach(b => {
-      items.push({ id: `bill-${b.id}`, type: "bill", title: `${b.name} overdue`, body: `Payment of ${b.amount.toLocaleString()} was due on the ${b.dueDay}th.`, time: `Due ${b.dueDay}th`, read: false });
-    });
+    if (notifSettings.billReminder) {
+      bills.filter(b => !b.paid && b.dueDay < dayOfMonth).forEach(b => {
+        items.push({ id: `bill-${b.id}`, type: "bill", title: `${b.name} overdue`, body: `Payment of ${b.amount.toLocaleString()} was due on the ${b.dueDay}th.`, time: `Due ${b.dueDay}th`, read: false });
+      });
+      bills.filter(b => !b.paid && b.dueDay >= dayOfMonth && b.dueDay <= dayOfMonth + 3).forEach(b => {
+        items.push({ id: `upcoming-${b.id}`, type: "bill", title: `${b.name} due soon`, body: `${b.amount.toLocaleString()} due on the ${b.dueDay}th.`, time: `In ${b.dueDay - dayOfMonth + 1} days`, read: false });
+      });
+    }
 
-    // Upcoming bills (due in next 3 days)
-    bills.filter(b => !b.paid && b.dueDay >= dayOfMonth && b.dueDay <= dayOfMonth + 3).forEach(b => {
-      items.push({ id: `upcoming-${b.id}`, type: "bill", title: `${b.name} due soon`, body: `${b.amount.toLocaleString()} due on the ${b.dueDay}th.`, time: `In ${b.dueDay - dayOfMonth + 1} days`, read: false });
-    });
-
-    // Monthly recap (last 3 days of month)
-    if (dayOfMonth >= daysInMonth - 2 && totalIncome > 0) {
+    if (dayOfMonth >= daysInMonth - 2 && totalIncome > 0 && notifSettings.monthlyRecap) {
       const saved = totalIncome - totalSpent;
       items.push({ id: "recap", type: "recap", title: "Month wrapping up", body: saved > 0 ? `You saved ${saved.toLocaleString()} this month. Great work!` : `You spent ${Math.abs(saved).toLocaleString()} more than you earned this month.`, time: "End of month", read: false });
     }
 
-    // Positive streak
-    if (transactions.length >= 5) {
+    if (transactions.length >= 5 && notifSettings.streak) {
       items.push({ id: "streak", type: "streak", title: "Staying on top of it", body: `You've logged ${transactions.length} transactions. Keep it up!`, time: "All time", read: true });
     }
 
     return items.length > 0 ? items : [{ id: "empty", type: "recap", title: "All clear", body: "No alerts right now. Add transactions to get personalised insights.", time: "Now", read: true }];
-  }, [transactions, bills, expenseCategories]);
-
-  const uid = session?.user?.id;
+  }, [transactions, bills, expenseCategories, notifSettings]);
 
   // ── Mappers ──────────────────────────────────────────────────────────────
   const mapCat  = c => ({ id: c.id, name: c.name, icon: c.icon, color: c.color, budget: c.budget_amount, group: c.group_name, rollover: c.rollover, is_income: c.is_income || false });
@@ -85,7 +88,7 @@ export function useSupabaseData(session) {
     try {
       const [
         { data: prof }, { data: cats }, { data: txs }, { data: bls },
-        { data: gls }, { data: dbs }, { data: ast }, { data: lib },
+        { data: gls }, { data: dbs }, { data: ast }, { data: lib }, { data: snaps },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", uid).single(),
         supabase.from("categories").select("*").eq("user_id", uid).order("sort_order"),
@@ -95,6 +98,7 @@ export function useSupabaseData(session) {
         supabase.from("debts").select("*").eq("user_id", uid),
         supabase.from("assets").select("*").eq("user_id", uid),
         supabase.from("liabilities").select("*").eq("user_id", uid),
+        supabase.from("networth_snapshots").select("*").eq("user_id", uid).order("month"),
       ]);
       setProfile(prof || null);
       setCategoriesState(cats?.length ? cats.map(mapCat) : []);
@@ -104,6 +108,7 @@ export function useSupabaseData(session) {
       setDebtsState(dbs?.length ? dbs.map(mapDebt) : []);
       setAssetsState(ast?.length ? ast.map(mapAsset) : []);
       setLiabilitiesState(lib?.length ? lib.map(mapLiab) : []);
+      setSnapshots(snaps || []);
     } finally {
       setLoading(false);
     }
@@ -131,9 +136,10 @@ export function useSupabaseData(session) {
     await supabase.from("profiles").upsert({
       id: uid, name, currency, accent_color: accent.value,
       theme, monthly_income: 0, last_bill_reset: thisMonth,
+      budget_method: "envelope",
+      notif_settings: { budgetWarning: true, overBudget: true, billReminder: true, streak: true, monthlyRecap: true },
     });
 
-    // Income categories based on chosen income types
     const incomeCategories = {
       salary:    { name: "Salary",        icon: "💼", color: "#34C759" },
       freelance: { name: "Freelance",      icon: "💻", color: "#5AC8FA" },
@@ -146,7 +152,6 @@ export function useSupabaseData(session) {
       ? incomeTypes.map(id => incomeCategories[id]).filter(Boolean)
       : [{ name: "Income", icon: "💸", color: "#34C759" }];
 
-    // Expense categories (no budget amounts — user adds their own)
     const expenseDefaults = [
       { name: "Food",      icon: "🍔", color: "#FF9F0A", group: "Living"    },
       { name: "Transport", icon: "🚗", color: "#5AC8FA", group: "Living"    },
@@ -169,18 +174,22 @@ export function useSupabaseData(session) {
       })),
     ];
 
-    await supabase.from("categories").insert(allCats);
+    const { data: insertedCats } = await supabase.from("categories").insert(allCats).select();
+    if (insertedCats) setCategoriesState(insertedCats.map(mapCat));
     await loadAll();
   };
 
-  // ── Settings persistence ─────────────────────────────────────────────────
+  // ── Settings ─────────────────────────────────────────────────────────────
   const saveSettings = async (updates) => {
     const dbUpdates = {};
-    if (updates.theme !== undefined)      dbUpdates.theme = updates.theme;
-    if (updates.accentColor !== undefined) dbUpdates.accent_color = updates.accentColor;
-    if (updates.name !== undefined)       dbUpdates.name = updates.name;
-    if (updates.currency !== undefined)   dbUpdates.currency = updates.currency;
-    if (updates.income !== undefined)     dbUpdates.monthly_income = updates.income;
+    if (updates.theme !== undefined)        dbUpdates.theme = updates.theme;
+    if (updates.accentColor !== undefined)  dbUpdates.accent_color = updates.accentColor;
+    if (updates.name !== undefined)         dbUpdates.name = updates.name;
+    if (updates.currency !== undefined)     dbUpdates.currency = updates.currency;
+    if (updates.income !== undefined)       dbUpdates.monthly_income = updates.income;
+    if (updates.budgetMethod !== undefined) dbUpdates.budget_method = updates.budgetMethod;
+    if (updates.notifSettings !== undefined) dbUpdates.notif_settings = updates.notifSettings;
+    if (updates.pinHash !== undefined)      dbUpdates.pin_hash = updates.pinHash;
     if (!Object.keys(dbUpdates).length) return;
     await supabase.from("profiles").update(dbUpdates).eq("id", uid);
     setProfile(p => ({ ...p, ...dbUpdates }));
@@ -212,12 +221,10 @@ export function useSupabaseData(session) {
   const syncTable = async (table, prev, next, toRow) => {
     const prevIds = new Set(prev.map(x => x.id));
     const nextIds = new Set(next.map(x => x.id));
-    // Delete removed rows
     const toDelete = [...prevIds].filter(id => !nextIds.has(id));
     for (const id of toDelete) {
       await supabase.from(table).delete().eq("id", id).eq("user_id", uid);
     }
-    // Insert new / update existing
     for (const item of next) {
       const row = { ...toRow(item), user_id: uid };
       if (!prevIds.has(item.id)) {
@@ -233,11 +240,10 @@ export function useSupabaseData(session) {
     const prev = categories;
     const next = typeof updater === "function" ? updater(prev) : updater;
     setCategoriesState(next);
-    await syncTable("categories", prev, next, (c, i) => ({
+    await syncTable("categories", prev, next, (c) => ({
       name: c.name, icon: c.icon, color: c.color,
       budget_amount: c.budget, group_name: c.group, rollover: c.rollover,
-      is_income: c.is_income || false,
-      sort_order: next.indexOf(c),
+      is_income: c.is_income || false, sort_order: next.indexOf(c),
     }));
   };
 
@@ -281,9 +287,7 @@ export function useSupabaseData(session) {
     const prev = assets;
     const next = typeof updater === "function" ? updater(prev) : updater;
     setAssetsState(next);
-    await syncTable("assets", prev, next, a => ({
-      name: a.name, type: a.type, value: a.value,
-    }));
+    await syncTable("assets", prev, next, a => ({ name: a.name, type: a.type, value: a.value }));
   };
 
   // ── Liabilities ──────────────────────────────────────────────────────────
@@ -291,35 +295,22 @@ export function useSupabaseData(session) {
     const prev = liabilities;
     const next = typeof updater === "function" ? updater(prev) : updater;
     setLiabilitiesState(next);
-    await syncTable("liabilities", prev, next, l => ({
-      name: l.name, type: l.type, balance: l.balance,
-    }));
+    await syncTable("liabilities", prev, next, l => ({ name: l.name, type: l.type, balance: l.balance }));
   };
 
-
-
-  const [snapshots, setSnapshots] = useState([]);
-
-
-  // ── Save net worth snapshot (once per month) ─────────────────────────────
+  // ── Net worth snapshots ──────────────────────────────────────────────────
   const saveNetworthSnapshot = async (netWorth) => {
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const existing = snapshots.find(s => s.month === month);
     if (existing) {
-      // Update if value changed
       if (existing.net_worth !== netWorth) {
-        const { data } = await supabase.from("networth_snapshots")
-          .update({ net_worth: netWorth })
-          .eq("id", existing.id)
-          .select().single();
+        const { data } = await supabase.from("networth_snapshots").update({ net_worth: netWorth }).eq("id", existing.id).select().single();
         if (data) setSnapshots(ss => ss.map(s => s.id === data.id ? data : s));
       }
       return;
     }
-    const { data } = await supabase.from("networth_snapshots")
-      .insert({ user_id: uid, month, net_worth: netWorth })
-      .select().single();
+    const { data } = await supabase.from("networth_snapshots").insert({ user_id: uid, month, net_worth: netWorth }).select().single();
     if (data) setSnapshots(ss => [...ss, data]);
   };
 
@@ -345,7 +336,8 @@ export function useSupabaseData(session) {
 
   return {
     profile, loading,
-    transactions, categories, bills, goals, debts, assets, liabilities, notifications,
+    transactions, categories, bills, goals, debts, assets, liabilities,
+    notifications, notifSettings, budgetMethod, pinHash,
     addTransaction, deleteTransaction, updateTransaction,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
     saveOnboarding, saveSettings, deleteAllData, snapshots, saveNetworthSnapshot,

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
 import { accentOptions } from "../tokens/colors";
+import { supabase } from "../lib/supabase";
+import Modal from "../components/ui/Modal";
 
 function useIsMobile() {
   const [m, setM] = useState(window.innerWidth < 768);
@@ -8,7 +10,6 @@ function useIsMobile() {
   return m;
 }
 
-// Defined OUTSIDE SettingsScreen — if defined inside, React remounts them on every render, resetting scroll
 function Toggle({ value, onChange, label, C }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${C.border}` }}>
@@ -33,12 +34,112 @@ function Section({ title, children, C }) {
   );
 }
 
-export default function SettingsScreen({ user, setUser, C, setTheme, theme, accentChoice, setAccentChoice, onSignOut, transactions, categories, onDeleteAllData }) {
+function PinSetupModal({ C, onClose, onSave }) {
+  const [step, setStep] = useState("enter"); // enter | confirm
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [error, setError] = useState("");
+
+  const keys = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
+
+  const handleKey = (key) => {
+    if (step === "enter") {
+      if (pin.length >= 4) return;
+      const next = pin + key;
+      setPin(next);
+      if (next.length === 4) setTimeout(() => setStep("confirm"), 200);
+    } else {
+      if (confirmPin.length >= 4) return;
+      const next = confirmPin + key;
+      setConfirmPin(next);
+      if (next.length === 4) {
+        setTimeout(() => {
+          if (next === pin) { onSave(pin); }
+          else { setError("PINs don't match. Try again."); setConfirmPin(""); setPin(""); setStep("enter"); }
+        }, 200);
+      }
+    }
+  };
+
+  const handleDelete = () => {
+    if (step === "enter") setPin(p => p.slice(0,-1));
+    else setConfirmPin(p => p.slice(0,-1));
+  };
+
+  const current = step === "enter" ? pin : confirmPin;
+
+  return (
+    <Modal onClose={onClose} C={C} width={360}>
+      <div style={{ padding: "28px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 20, fontFamily: "'DM Serif Display', serif", color: C.text, marginBottom: 6 }}>
+            {step === "enter" ? "Set a PIN" : "Confirm PIN"}
+          </div>
+          <div style={{ fontSize: 13, color: C.textMuted }}>
+            {step === "enter" ? "Choose a 4-digit PIN to lock the app" : "Enter your PIN again to confirm"}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 14 }}>
+          {[0,1,2,3].map(i => (
+            <div key={i} style={{
+              width: 14, height: 14, borderRadius: "50%",
+              background: i < current.length ? C.accent : C.surfaceAlt,
+              border: `2px solid ${i < current.length ? C.accent : C.border}`,
+              transition: `all 150ms ${springs.snap}`,
+            }} />
+          ))}
+        </div>
+
+        {error && <div style={{ fontSize: 13, color: C.expense, textAlign: "center" }}>{error}</div>}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 64px)", gap: 12 }}>
+          {keys.map((key, i) => (
+            <button key={i} onClick={() => key === "⌫" ? handleDelete() : key ? handleKey(key) : null}
+              disabled={!key}
+              style={{
+                width: 64, height: 64, borderRadius: "50%", border: "none",
+                cursor: key ? "pointer" : "default",
+                background: key ? C.surfaceAlt : "transparent",
+                color: key === "⌫" ? C.textMuted : C.text,
+                fontSize: key === "⌫" ? 18 : 22,
+                fontFamily: "'DM Serif Display', serif",
+                transition: `all 100ms ${springs.snap}`,
+                opacity: key ? 1 : 0,
+              }}
+              onMouseDown={e => { if (key) e.currentTarget.style.transform = "scale(0.9)"; }}
+              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}
+            >{key}</button>
+          ))}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+export default function SettingsScreen({
+  user, setUser, C, session,
+  setTheme, theme, accentChoice, setAccentChoice,
+  onSignOut, transactions, categories, onDeleteAllData,
+  budgetMethod, onBudgetMethodChange,
+  notifSettings, onNotifSettingsChange,
+  pinHash, onSetPin,
+}) {
   const isMobile = useIsMobile();
-  const [notifToggles, setNotifToggles] = useState({ budgetWarning: true, overBudget: true, billReminder: true, streak: true, monthlyRecap: true, anomaly: false });
-  const [method, setMethod] = useState("envelope");
-  const [pinEnabled, setPinEnabled] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [emailInput, setEmailInput] = useState(session?.user?.email || "");
+  const [emailStatus, setEmailStatus] = useState("");
+
+  const handleEmailSave = async () => {
+    if (!emailInput || emailInput === session?.user?.email) return;
+    const { error } = await supabase.auth.updateUser({ email: emailInput });
+    if (error) setEmailStatus("Error: " + error.message);
+    else setEmailStatus("Check your new email to confirm the change.");
+    setTimeout(() => setEmailStatus(""), 4000);
+  };
+
+  const handleRemovePin = () => { onSetPin(null); };
 
   const exportCSV = () => {
     const header = "Date,Type,Category,Amount,Note\n";
@@ -60,6 +161,14 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
     URL.revokeObjectURL(url);
   };
 
+  const notifLabels = {
+    budgetWarning: "80% budget warning",
+    overBudget: "Over budget alert",
+    billReminder: "Bill reminders",
+    streak: "Logging streaks",
+    monthlyRecap: "Monthly recap",
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 640 }}>
       <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px" }}>Settings</h1>
@@ -69,12 +178,24 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
           <div style={{ width: 56, height: 56, borderRadius: "50%", background: `linear-gradient(135deg, ${C.accent}, #818CF8)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, color: "white" }}>{user.name.charAt(0).toUpperCase()}</div>
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: C.text }}>{user.name}</div>
-            <div style={{ fontSize: 13, color: C.textMuted }}>Personal · {user.currency}</div>
+            <div style={{ fontSize: 13, color: C.textMuted }}>{session?.user?.email}</div>
           </div>
         </div>
         <input placeholder="Your name" defaultValue={user.name} onBlur={e => setUser(u => ({ ...u, name: e.target.value }))}
-          style={{ width: "100%", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 14px", fontSize: 14, color: C.text, outline: "none", marginBottom: 10 }} />
-        <input placeholder="Email (optional)" style={{ width: "100%", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 14px", fontSize: 14, color: C.text, outline: "none" }} />
+          style={{ width: "100%", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 14px", fontSize: 14, color: C.text, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type="email" placeholder="Email address" value={emailInput}
+            onChange={e => setEmailInput(e.target.value)}
+            style={{ flex: 1, background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 14px", fontSize: 14, color: C.text, outline: "none" }}
+          />
+          <button onClick={handleEmailSave} style={{
+            padding: "11px 16px", borderRadius: 12, border: "none",
+            background: C.accent, color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}>Update</button>
+        </div>
+        {emailStatus && <div style={{ fontSize: 12, color: C.textMuted, marginTop: 6 }}>{emailStatus}</div>}
       </Section>
 
       <Section title="Appearance" C={C}>
@@ -118,27 +239,48 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
         <div style={{ fontSize: 14, color: C.text, marginBottom: 8 }}>Budget Method</div>
         <div style={{ display: "flex", background: C.surfaceAlt, borderRadius: 12, padding: 4, gap: 4 }}>
           {["envelope","flexible"].map(m => (
-            <button key={m} onClick={() => setMethod(m)} style={{
+            <button key={m} onClick={() => onBudgetMethodChange(m)} style={{
               flex: 1, padding: "10px", borderRadius: 10, border: "none", cursor: "pointer",
-              background: method === m ? C.surface : "transparent",
-              color: method === m ? C.text : C.textMuted, fontSize: 13, fontWeight: 500,
-              textTransform: "capitalize", boxShadow: method === m ? C.shadow : "none",
+              background: budgetMethod === m ? C.surface : "transparent",
+              color: budgetMethod === m ? C.text : C.textMuted, fontSize: 13, fontWeight: 500,
+              textTransform: "capitalize", boxShadow: budgetMethod === m ? C.shadow : "none",
               transition: `all 200ms ${springs.snap}`,
-            }}>{m}</button>
+            }}>{m === "envelope" ? "📬 Envelope" : "🔓 Flexible"}</button>
           ))}
+        </div>
+        <div style={{ fontSize: 12, color: C.textMuted, marginTop: 8 }}>
+          {budgetMethod === "envelope" ? "Hard limits — spending stops at your budget." : "Soft limits — track without restrictions."}
         </div>
       </Section>
 
       <Section title="Notifications" C={C}>
-        {Object.entries(notifToggles).map(([key, val]) => {
-          const labels = { budgetWarning: "80% budget warning", overBudget: "Over budget alert", billReminder: "Bill reminders", streak: "Logging streaks", monthlyRecap: "Monthly recap", anomaly: "Anomaly detection" };
-          return <Toggle key={key} value={val} onChange={v => setNotifToggles(t => ({ ...t, [key]: v }))} label={labels[key]} C={C} />;
-        })}
+        {Object.entries(notifLabels).map(([key, label]) => (
+          <Toggle key={key} value={notifSettings[key] ?? true} onChange={v => onNotifSettingsChange({ ...notifSettings, [key]: v })} label={label} C={C} />
+        ))}
       </Section>
 
       <Section title="Security" C={C}>
-        <Toggle value={pinEnabled} onChange={setPinEnabled} label="PIN Lock" C={C} />
-        <Toggle value={false} onChange={() => {}} label="Biometric Login" C={C} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${C.border}` }}>
+          <div>
+            <div style={{ fontSize: 14, color: C.text }}>PIN Lock</div>
+            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{pinHash ? "App is locked on open" : "Require a PIN to open the app"}</div>
+          </div>
+          {pinHash ? (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setShowPinSetup(true)} style={{ padding: "8px 14px", borderRadius: 10, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 13, cursor: "pointer" }}>Change</button>
+              <button onClick={handleRemovePin} style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: C.expense + "22", color: C.expense, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Remove</button>
+            </div>
+          ) : (
+            <button onClick={() => setShowPinSetup(true)} style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: C.accent, color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Enable</button>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0" }}>
+          <div>
+            <div style={{ fontSize: 14, color: C.text }}>Biometric Login</div>
+            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Coming soon</div>
+          </div>
+          <div style={{ fontSize: 12, color: C.textMuted, background: C.surfaceAlt, padding: "4px 10px", borderRadius: 99 }}>Soon</div>
+        </div>
       </Section>
 
       <Section title="Data" C={C}>
@@ -185,6 +327,10 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
           <div>Built with care. Designed for you.</div>
         </div>
       </Section>
+
+      {showPinSetup && (
+        <PinSetupModal C={C} onClose={() => setShowPinSetup(false)} onSave={(pin) => { onSetPin(pin); setShowPinSetup(false); }} />
+      )}
     </div>
   );
 }

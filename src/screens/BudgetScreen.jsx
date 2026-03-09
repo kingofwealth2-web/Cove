@@ -11,17 +11,17 @@ function useIsMobile() {
   return m;
 }
 
-export default function BudgetScreen({ transactions, categories, setCategories, user, C, onUpdateTransaction, onDeleteTransaction }) {
+export default function BudgetScreen({ transactions, categories, setCategories, user, C, budgetMethod, onUpdateTransaction, onDeleteTransaction }) {
   const isMobile = useIsMobile();
   const [monthOffset, setMonthOffset] = useState(0);
   const [expanded, setExpanded] = useState(null);
-  const [method, setMethod] = useState("envelope");
   const [addingCat, setAddingCat] = useState(false);
   const [newCat, setNewCat] = useState({ name: "", icon: "📦", color: "#6366F1", budget: "" });
   const [editingBudget, setEditingBudget] = useState({});
   const [editCat, setEditCat] = useState(null);
   const [editTx, setEditTx] = useState(null);
 
+  const method = budgetMethod || "envelope";
   const isEnvelope = method === "envelope";
 
   const now = new Date();

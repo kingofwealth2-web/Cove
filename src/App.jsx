@@ -11,6 +11,7 @@ import MobileTopBar from "./components/layout/MobileTopBar";
 
 import AuthScreen from "./screens/AuthScreen";
 import Onboarding from "./screens/Onboarding";
+import PinScreen from "./screens/PinScreen";
 import AddTransactionPanel from "./screens/AddTransactionPanel";
 import Dashboard from "./screens/Dashboard";
 import BudgetScreen from "./screens/BudgetScreen";
@@ -33,6 +34,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [pinLocked, setPinLocked] = useState(false);
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768);
@@ -53,7 +55,8 @@ export default function App() {
 
   const {
     profile, loading,
-    transactions, categories, bills, goals, debts, assets, liabilities, notifications,
+    transactions, categories, bills, goals, debts, assets, liabilities,
+    notifications, notifSettings, budgetMethod, pinHash,
     addTransaction, deleteTransaction, updateTransaction,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
     saveOnboarding, saveSettings, deleteAllData, snapshots, saveNetworthSnapshot,
@@ -68,6 +71,8 @@ export default function App() {
       setTheme(profile.theme || "dark");
       const found = accentOptions.find(a => a.value === profile.accent_color);
       if (found) setAccentChoice(found);
+      // Show PIN lock screen on first load if PIN is set
+      if (profile.pin_hash) setPinLocked(true);
     }
   }, [profile?.id]);
 
@@ -76,13 +81,11 @@ export default function App() {
     if (!profile || !transactions.length) return;
     const now = new Date();
     const thisMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
-    const lastRecurring = profile.last_recurring_log;
-    if (lastRecurring === thisMonth) return;
+    if (profile.last_recurring_log === thisMonth) return;
 
     const recurring = transactions.filter(t => t.isRecurring);
     if (!recurring.length) return;
 
-    // Find unique recurring templates (last occurrence of each note+category combo)
     const seen = new Set();
     const templates = recurring.filter(t => {
       const key = `${t.categoryId}-${t.note}-${t.type}`;
@@ -91,24 +94,22 @@ export default function App() {
       return true;
     });
 
-    // Check if we already logged them this month
     const thisMonthTxs = transactions.filter(t => {
       const d = new Date(t.date);
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
 
-    const toLog = templates.filter(t => {
-      return !thisMonthTxs.some(m => m.categoryId === t.categoryId && m.note === t.note && m.isRecurring);
-    });
+    const toLog = templates.filter(t =>
+      !thisMonthTxs.some(m => m.categoryId === t.categoryId && m.note === t.note && m.isRecurring)
+    );
 
-    if (toLog.length === 0) return;
+    if (!toLog.length) return;
 
     const today = now.toISOString().split("T")[0];
-    Promise.all(toLog.map(t => addTransaction({ ...t, date: today, id: undefined })))
-      .then(() => {
-        supabase.from("profiles").update({ last_recurring_log: thisMonth }).eq("id", profile.id);
-        setToast(`${toLog.length} recurring transaction${toLog.length > 1 ? "s" : ""} logged ✓`);
-      });
+    Promise.all(toLog.map(t => addTransaction({ ...t, date: today, id: undefined }))).then(() => {
+      supabase.from("profiles").update({ last_recurring_log: thisMonth }).eq("id", profile.id);
+      setToast(`${toLog.length} recurring transaction${toLog.length > 1 ? "s" : ""} logged ✓`);
+    });
   }, [profile?.id, transactions.length]);
 
   const navigate = (screen) => {
@@ -132,6 +133,7 @@ export default function App() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setSession(null);
+    setPinLocked(false);
   };
 
   const handleDeleteAllData = async () => {
@@ -146,6 +148,10 @@ export default function App() {
 
   const handleThemeChange = (t) => { setTheme(t); saveSettings({ theme: t }); };
   const handleAccentChange = (a) => { setAccentChoice(a); saveSettings({ accentColor: a.value }); };
+  const handleBudgetMethodChange = (m) => { saveSettings({ budgetMethod: m }); };
+  const handleNotifSettingsChange = (ns) => { saveSettings({ notifSettings: ns }); };
+  const handleSetPin = (pin) => { saveSettings({ pinHash: pin || null }); };
+
   const setUser = async (updater) => {
     const next = typeof updater === "function" ? updater(user) : updater;
     await saveSettings({ name: next.name, currency: next.currency, income: next.income });
@@ -160,7 +166,12 @@ export default function App() {
     );
   }
 
+  if (!session) return <AuthScreen />;
   if (!profile && !loading) return <Onboarding onComplete={handleOnboardingComplete} />;
+
+  if (pinLocked && pinHash) {
+    return <PinScreen pinHash={pinHash} onUnlock={() => setPinLocked(false)} C={C} />;
+  }
 
   const getScreenAnimation = (id) => {
     if (id === active && !animatedScreens.current.has(id)) {
@@ -172,14 +183,14 @@ export default function App() {
 
   const SCREENS = [
     { id: "home",          el: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} /> },
-    { id: "budget",        el: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} /> },
+    { id: "budget",        el: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} budgetMethod={budgetMethod} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} /> },
     { id: "trends",        el: <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} /> },
     { id: "bills",         el: <BillsScreen bills={bills} setBills={setBills} user={user} C={C} /> },
     { id: "goals",         el: <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} /> },
     { id: "debt",          el: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} /> },
     { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} /> },
     { id: "notifications", el: <NotificationsScreen notifications={notifications} setNotifications={() => {}} C={C} /> },
-    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} /> },
+    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} /> },
   ];
 
   return (
@@ -189,17 +200,11 @@ export default function App() {
         <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={notifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {isMobile && <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => setShowAdd(true)} C={C} notifications={notifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />}
-          <main style={{
-            flex: 1,
-            position: "relative",
-            maxHeight: isMobile ? "calc(100vh - 60px)" : "100vh",
-          }}>
+          <main style={{ flex: 1, position: "relative", maxHeight: isMobile ? "calc(100vh - 60px)" : "100vh" }}>
             {SCREENS.map(({ id, el }) => (
               <div key={id} style={{
                 display: active === id ? "block" : "none",
-                position: "absolute",
-                inset: 0,
-                overflowY: "auto",
+                position: "absolute", inset: 0, overflowY: "auto",
                 padding: isMobile ? "20px 16px" : "44px 52px",
                 animation: getScreenAnimation(id),
               }}>
