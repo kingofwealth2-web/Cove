@@ -27,7 +27,7 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
     else setAmount(a => a + k);
   };
 
-  const canSave = parseFloat(amount) > 0 && (type === "income" || catId);
+  const canSave = parseFloat(amount) > 0 && catId;
 
   const handleSave = () => {
     onSave({
@@ -43,7 +43,7 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
       <div style={{ padding: "20px 28px", borderBottom: `1px solid ${C.border}` }}>
         <div style={{ display: "flex", background: C.surfaceAlt, borderRadius: 12, padding: 4, gap: 4 }}>
           {["expense","income"].map(t => (
-            <button key={t} onClick={() => setType(t)} style={{
+            <button key={t} onClick={() => { setType(t); setCatId(null); }} style={{
               flex: 1, padding: "9px", borderRadius: 10, border: "none", cursor: "pointer",
               background: type === t ? (t === "income" ? C.income : C.expense) : "transparent",
               color: type === t ? "white" : C.textSub,
@@ -86,11 +86,12 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
       )}
 
       {/* Category */}
-      {type === "expense" && (
-        <div style={{ padding: "16px 28px", borderBottom: `1px solid ${C.border}` }}>
-          <Label C={C} style={{ marginBottom: 10 }}>Category</Label>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {categories.map(cat => (
+      <div style={{ padding: "16px 28px", borderBottom: `1px solid ${C.border}` }}>
+        <Label C={C} style={{ marginBottom: 10 }}>Category</Label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {categories
+            .filter(cat => type === "income" ? cat.is_income : !cat.is_income)
+            .map(cat => (
               <button key={cat.id} onClick={() => setCatId(cat.id)} style={{
                 padding: "7px 13px", borderRadius: 99,
                 border: `1px solid ${catId === cat.id ? cat.color + "60" : "transparent"}`,
@@ -103,9 +104,8 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
                 <span>{cat.icon}</span>{cat.name}
               </button>
             ))}
-          </div>
         </div>
-      )}
+      </div>
 
       {/* Note, date, recurring */}
       <div style={{ padding: "14px 28px", borderBottom: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 10 }}>

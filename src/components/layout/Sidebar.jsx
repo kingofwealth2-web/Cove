@@ -20,7 +20,7 @@ const CoveLogo = ({ size = 18 }) => (
   </svg>
 );
 
-export default function Sidebar({ active, setActive, onAdd, user, C, notifications, mobileOpen, onMobileClose }) {
+export default function Sidebar({ active, setActive, onAdd, user, C, notifications, mobileOpen, onMobileClose, onSignOut }) {
   const unread = notifications.filter(n => !n.read).length;
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [collapsed, setCollapsed] = useState(false);
@@ -128,10 +128,14 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
             <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, ${C.accent}, ${C.accentDark || C.accent})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white", flexShrink: 0 }}>
               {user.name.charAt(0).toUpperCase()}
             </div>
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</div>
-              <div style={{ fontSize: 11, color: C.textMuted }}>{user.currency} · Personal</div>
+              <div style={{ fontSize: 11, color: C.textMuted }}>{user.currency}</div>
             </div>
+            <button onClick={onSignOut} title="Sign out" style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, fontSize: 16, padding: "4px", borderRadius: 8, flexShrink: 0, transition: `color 150ms` }}
+              onMouseEnter={e => e.currentTarget.style.color = C.expense}
+              onMouseLeave={e => e.currentTarget.style.color = C.textMuted}
+            >⏻</button>
           </div>
         )}
         {!isMobile && (

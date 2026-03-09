@@ -72,29 +72,51 @@ export function useSupabaseData(session) {
   }, [uid, profile?.last_bill_reset]);
 
   // ── Onboarding ───────────────────────────────────────────────────────────
-  const saveOnboarding = async ({ name, income, currency, accent, theme }) => {
+  const saveOnboarding = async ({ name, incomeTypes = [], currency, accent, theme }) => {
     const now = new Date();
     const thisMonth = now.getFullYear() + "-" + (now.getMonth() + 1);
     await supabase.from("profiles").upsert({
       id: uid, name, currency, accent_color: accent.value,
-      theme, monthly_income: income, last_bill_reset: thisMonth,
+      theme, monthly_income: 0, last_bill_reset: thisMonth,
     });
-    const defaults = [
-      { name: "Food",      icon: "🍔", color: "#FF9F0A", pct: 0.20, group: "Living",    rollover: false },
-      { name: "Transport", icon: "🚗", color: "#5AC8FA", pct: 0.10, group: "Living",    rollover: false },
-      { name: "Rent",      icon: "🏠", color: "#BF5AF2", pct: 0.30, group: "Living",    rollover: false },
-      { name: "Utilities", icon: "💡", color: "#FF6B35", pct: 0.06, group: "Living",    rollover: true  },
-      { name: "Health",    icon: "❤️", color: "#FF375F", pct: 0.07, group: "Wellness",  rollover: false },
-      { name: "Fun",       icon: "🎉", color: "#6366F1", pct: 0.08, group: "Lifestyle", rollover: false },
-      { name: "Savings",   icon: "💰", color: "#34C759", pct: 0.12, group: "Goals",     rollover: false },
-      { name: "Education", icon: "📚", color: "#00C7BE", pct: 0.05, group: "Growth",    rollover: false },
+
+    // Income categories based on chosen income types
+    const incomeCategories = {
+      salary:    { name: "Salary",        icon: "💼", color: "#34C759" },
+      freelance: { name: "Freelance",      icon: "💻", color: "#5AC8FA" },
+      business:  { name: "Business",       icon: "🏪", color: "#FF9F0A" },
+      hustle:    { name: "Side Hustle",    icon: "⚡", color: "#BF5AF2" },
+      family:    { name: "Family Support", icon: "🤝", color: "#6366F1" },
+      mixed:     { name: "Other Income",   icon: "💸", color: "#00C7BE" },
+    };
+    const selectedIncome = incomeTypes.length > 0
+      ? incomeTypes.map(id => incomeCategories[id]).filter(Boolean)
+      : [{ name: "Income", icon: "💸", color: "#34C759" }];
+
+    // Expense categories (no budget amounts — user adds their own)
+    const expenseDefaults = [
+      { name: "Food",      icon: "🍔", color: "#FF9F0A", group: "Living"    },
+      { name: "Transport", icon: "🚗", color: "#5AC8FA", group: "Living"    },
+      { name: "Health",    icon: "❤️", color: "#FF375F", group: "Wellness"  },
+      { name: "Fun",       icon: "🎉", color: "#6366F1", group: "Lifestyle" },
+      { name: "Savings",   icon: "💰", color: "#34C759", group: "Goals"     },
+      { name: "Other",     icon: "📦", color: "#8E8E93", group: "Other"     },
     ];
-    await supabase.from("categories").insert(
-      defaults.map((c, i) => ({
+
+    const allCats = [
+      ...selectedIncome.map((c, i) => ({
         user_id: uid, name: c.name, icon: c.icon, color: c.color,
-        budget_amount: Math.round(income * c.pct), group_name: c.group, rollover: c.rollover, sort_order: i,
-      }))
-    );
+        budget_amount: 0, group_name: "Income", rollover: false,
+        sort_order: i, is_income: true,
+      })),
+      ...expenseDefaults.map((c, i) => ({
+        user_id: uid, name: c.name, icon: c.icon, color: c.color,
+        budget_amount: 0, group_name: c.group, rollover: false,
+        sort_order: selectedIncome.length + i, is_income: false,
+      })),
+    ];
+
+    await supabase.from("categories").insert(allCats);
     await loadAll();
   };
 
