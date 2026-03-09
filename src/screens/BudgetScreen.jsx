@@ -114,11 +114,11 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
               borderRadius: 18,
               border: `1px solid ${isOver ? C.expense + "40" : C.border}`,
               boxShadow: C.shadow, overflow: "hidden",
-              opacity: isEnvelope && budget === 0 ? 0.6 : 1,
               animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: `${60 + i * 40}ms`,
             }}>
               <div onClick={() => setExpanded(isExpanded ? null : cat.id)} style={{
                 display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", cursor: "pointer",
+                opacity: isEnvelope && budget === 0 ? 0.6 : 1,
               }}>
                 <div style={{ width: 40, height: 40, borderRadius: 12, background: cat.color + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{cat.icon}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
