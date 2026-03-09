@@ -24,7 +24,10 @@ export default function BillsScreen({ bills, setBills, user, C }) {
   const totalSubs = bills.filter(b => b.isSubscription).reduce((s, b) => s + b.amount, 0);
   const totalBills = bills.reduce((s, b) => s + b.amount, 0);
 
+  const [editBill, setEditBill] = useState(null);
   const togglePaid = (id) => setBills(bs => bs.map(b => b.id === id ? { ...b, paid: !b.paid } : b));
+  const deleteBill = (id) => setBills(bs => bs.filter(b => b.id !== id));
+  const saveEditBill = (updated) => setBills(bs => bs.map(b => b.id === updated.id ? updated : b));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -111,6 +114,8 @@ export default function BillsScreen({ bills, setBills, user, C }) {
                   </div>
                 </div>
                 <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 15, fontWeight: 600, color: C.text }}>{user.currency} {bill.amount}</div>
+                <button onClick={() => setEditBill({ ...bill })} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", cursor: "pointer", fontSize: 14, color: C.textMuted }}>✏️</button>
+                <button onClick={() => deleteBill(bill.id)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", cursor: "pointer", fontSize: 14, color: C.expense }}>🗑</button>
                 <button onClick={() => togglePaid(bill.id)} style={{
                   width: 32, height: 32, borderRadius: 8, border: `1.5px solid ${bill.paid ? C.income : C.border}`,
                   background: bill.paid ? C.incomeSoft : "transparent", cursor: "pointer", fontSize: 16, color: bill.paid ? C.income : C.textMuted,
@@ -155,10 +160,37 @@ export default function BillsScreen({ bills, setBills, user, C }) {
           </div>
         </Modal>
       )}
+      {editBill && (
+        <Modal onClose={() => setEditBill(null)} C={C} width={400}>
+          <div style={{ padding: 28 }}>
+            <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: C.text, marginBottom: 20 }}>Edit Bill</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {[
+                { key: "name", placeholder: "Bill name" },
+                { key: "amount", placeholder: "Amount", type: "number" },
+                { key: "dueDay", placeholder: "Due day (1-31)", type: "number" },
+              ].map(f => (
+                <input key={f.key} type={f.type || "text"} placeholder={f.placeholder} value={editBill[f.key]}
+                  onChange={e => setEditBill(b => ({ ...b, [f.key]: f.type === "number" ? e.target.value : e.target.value }))}
+                  style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, color: C.text, outline: "none" }} />
+              ))}
+              <button onClick={() => setEditBill(b => ({ ...b, isSubscription: !b.isSubscription }))} style={{
+                display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", color: C.textSub, fontSize: 14, padding: 0,
+              }}>
+                <div style={{ width: 40, height: 24, borderRadius: 99, background: editBill.isSubscription ? C.accent : C.surfaceAlt, position: "relative", border: `1px solid ${C.border}` }}>
+                  <div style={{ width: 18, height: 18, borderRadius: "50%", background: "white", position: "absolute", top: 2, left: editBill.isSubscription ? 18 : 2, transition: `left 200ms ${springs.bounce}` }} />
+                </div>
+                Subscription
+              </button>
+              <button onClick={() => {
+                saveEditBill({ ...editBill, amount: parseFloat(editBill.amount), dueDay: parseInt(editBill.dueDay) });
+                setEditBill(null);
+              }} style={{ padding: "13px", background: C.accent, color: "white", border: "none", borderRadius: 14, cursor: "pointer", fontWeight: 700, fontSize: 15, boxShadow: `0 8px 24px ${C.accentGlow}` }}>Save Changes</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GOALS SCREEN
 // ─────────────────────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { springs } from "../tokens/springs";
 import { useCountUp } from "../hooks/useCountUp";
 import ProgressBar from "../components/ui/ProgressBar";
 import Label from "../components/ui/Label";
+import Modal from "../components/ui/Modal";
 
 function useIsMobile() {
   const [m, setM] = useState(window.innerWidth < 768);
@@ -18,6 +19,7 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
   const [addingCat, setAddingCat] = useState(false);
   const [newCat, setNewCat] = useState({ name: "", icon: "📦", color: "#6366F1", budget: "" });
   const [editingBudget, setEditingBudget] = useState({});
+  const [editCat, setEditCat] = useState(null);
 
   const isEnvelope = method === "envelope";
 
@@ -159,6 +161,12 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
               {isExpanded && (
                 <div style={{ borderTop: `1px solid ${C.border}`, padding: "12px 20px 16px" }}>
 
+                  {/* Category actions */}
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <button onClick={(e) => { e.stopPropagation(); setEditCat({ ...cat }); }} style={{ padding: "7px 14px", background: C.surfaceAlt, color: C.textMuted, border: `1px solid ${C.border}`, borderRadius: 10, cursor: "pointer", fontSize: 13 }}>✏️ Edit name & icon</button>
+                    <button onClick={(e) => { e.stopPropagation(); setCategories(cats => cats.filter(c => c.id !== cat.id)); setExpanded(null); }} style={{ padding: "7px 14px", background: C.expenseSoft, color: C.expense, border: "none", borderRadius: 10, cursor: "pointer", fontSize: 13 }}>🗑 Delete</button>
+                  </div>
+
                   {/* Envelope: show remaining callout */}
                   {isEnvelope && budget > 0 && (
                     <div style={{
@@ -267,6 +275,32 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
           >+ Add Category</button>
         )}
       </div>
+
+      {editCat && (
+        <Modal onClose={() => setEditCat(null)} C={C} width={380}>
+          <div style={{ padding: 28 }}>
+            <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: C.text, marginBottom: 20 }}>Edit Category</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <input placeholder="Category name" value={editCat.name} onChange={e => setEditCat(c => ({ ...c, name: e.target.value }))}
+                style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, color: C.text, outline: "none" }} />
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {["📦","🎮","💊","🛒","📱","🎵","🏋️","🐾","✈️","🎨","🍔","🚗","🏠","💡","❤️","🎉","💰","📚"].map(em => (
+                  <button key={em} onClick={() => setEditCat(c => ({ ...c, icon: em }))} style={{
+                    width: 38, height: 38, borderRadius: 10, border: `2px solid ${editCat.icon === em ? C.accent : "transparent"}`,
+                    background: C.surfaceAlt, cursor: "pointer", fontSize: 18,
+                  }}>{em}</button>
+                ))}
+              </div>
+              <button onClick={() => {
+                if (editCat.name) {
+                  setCategories(cats => cats.map(c => c.id === editCat.id ? { ...c, name: editCat.name, icon: editCat.icon } : c));
+                  setEditCat(null);
+                }
+              }} style={{ padding: "13px", background: C.accent, color: "white", border: "none", borderRadius: 14, cursor: "pointer", fontWeight: 700, fontSize: 15, boxShadow: `0 8px 24px ${C.accentGlow}` }}>Save Changes</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

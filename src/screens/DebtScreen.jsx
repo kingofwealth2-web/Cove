@@ -13,7 +13,7 @@ function useIsMobile() {
 
 
 
-function DebtCard({ debt, i, user, C, onPayment }) {
+function DebtCard({ debt, i, user, C, onPayment, onEdit, onDelete }) {
   const paidPct = ((debt.originalAmount - debt.currentBalance) / debt.originalAmount) * 100;
   const [hov, setHov] = useState(false);
   return (
@@ -49,10 +49,14 @@ function DebtCard({ debt, i, user, C, onPayment }) {
           </div>
         ))}
       </div>
-      <button onClick={() => onPayment(debt.id)} style={{
-        marginTop: 14, width: "100%", padding: "10px", background: C.accentSoft, color: C.accent,
-        border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 600, fontSize: 13,
-      }}>Make Payment</button>
+      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+        <button onClick={() => onPayment(debt.id)} style={{
+          flex: 1, padding: "10px", background: C.accentSoft, color: C.accent,
+          border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 600, fontSize: 13,
+        }}>Make Payment</button>
+        <button onClick={onEdit} style={{ padding: "10px 12px", background: C.surfaceAlt, color: C.textMuted, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>✏️</button>
+        <button onClick={onDelete} style={{ padding: "10px 12px", background: C.expenseSoft, color: C.expense, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>🗑</button>
+      </div>
     </div>
   );
 }
@@ -68,6 +72,7 @@ export default function DebtScreen({ debts, setDebts, user, C }) {
   const [newDebt, setNewDebt] = useState({ lender: "", originalAmount: "", currentBalance: "", interestRate: "", minimumPayment: "", dueDay: "", type: "loan" });
   const [makePayment, setMakePayment] = useState(null);
   const [payAmt, setPayAmt] = useState("");
+  const [editDebt, setEditDebt] = useState(null);
 
   const totalDebt = debts.reduce((s, d) => s + d.currentBalance, 0);
   const totalDebtNum = useCountUp(totalDebt, 700, 200, [totalDebt]);
@@ -149,7 +154,11 @@ export default function DebtScreen({ debts, setDebts, user, C }) {
 
       {/* Debt cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {debts.map((debt, i) => <DebtCard key={debt.id} debt={debt} i={i} user={user} C={C} onPayment={setMakePayment} />)}
+        {debts.map((debt, i) => <DebtCard key={debt.id} debt={debt} i={i} user={user} C={C}
+          onPayment={setMakePayment}
+          onEdit={() => setEditDebt({ ...debt, originalAmount: String(debt.originalAmount), currentBalance: String(debt.currentBalance), interestRate: String(debt.interestRate), minimumPayment: String(debt.minimumPayment), dueDay: String(debt.dueDay) })}
+          onDelete={() => setDebts(ds => ds.filter(d => d.id !== debt.id))}
+        />)}
       </div>
 
       {makePayment && (
@@ -202,10 +211,37 @@ export default function DebtScreen({ debts, setDebts, user, C }) {
           </div>
         </Modal>
       )}
+      {editDebt && (
+        <Modal onClose={() => setEditDebt(null)} C={C} width={440}>
+          <div style={{ padding: 28 }}>
+            <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: C.text, marginBottom: 20 }}>Edit Debt</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {[
+                { key: "lender", placeholder: "Lender / creditor" },
+                { key: "originalAmount", placeholder: "Original amount", type: "number" },
+                { key: "currentBalance", placeholder: "Current balance", type: "number" },
+                { key: "interestRate", placeholder: "Interest rate (%)", type: "number" },
+                { key: "minimumPayment", placeholder: "Minimum payment", type: "number" },
+                { key: "dueDay", placeholder: "Due day (1-31)", type: "number" },
+              ].map(f => (
+                <input key={f.key} type={f.type || "text"} placeholder={f.placeholder} value={editDebt[f.key]}
+                  onChange={e => setEditDebt(d => ({ ...d, [f.key]: e.target.value }))}
+                  style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, color: C.text, outline: "none" }} />
+              ))}
+              <select value={editDebt.type} onChange={e => setEditDebt(d => ({ ...d, type: e.target.value }))}
+                style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, color: C.text, outline: "none" }}>
+                <option value="loan">Loan</option><option value="credit_card">Credit Card</option>
+                <option value="mortgage">Mortgage</option><option value="other">Other</option>
+              </select>
+              <button onClick={() => {
+                setDebts(ds => ds.map(d => d.id === editDebt.id ? { ...d, lender: editDebt.lender, originalAmount: parseFloat(editDebt.originalAmount), currentBalance: parseFloat(editDebt.currentBalance), interestRate: parseFloat(editDebt.interestRate) || 0, minimumPayment: parseFloat(editDebt.minimumPayment) || 0, dueDay: parseInt(editDebt.dueDay) || 1, type: editDebt.type } : d));
+                setEditDebt(null);
+              }} style={{ padding: "13px", background: C.accent, color: "white", border: "none", borderRadius: 14, cursor: "pointer", fontWeight: 700, fontSize: 15, boxShadow: `0 8px 24px ${C.accentGlow}` }}>Save Changes</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// NET WORTH SCREEN
 // ─────────────────────────────────────────────────────────────────────────────

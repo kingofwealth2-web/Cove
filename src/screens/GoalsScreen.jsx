@@ -14,7 +14,7 @@ function useIsMobile() {
 
 
 
-function GoalCard({ goal, i, user, C, onAddMoney, onTogglePause }) {
+function GoalCard({ goal, i, user, C, onAddMoney, onTogglePause, onEdit, onDelete }) {
   const remaining = goal.target - goal.current;
   const deadline = goal.deadline ? new Date(goal.deadline) : null;
   const daysLeft = deadline ? Math.ceil((deadline - new Date()) / 86400000) : null;
@@ -58,6 +58,8 @@ function GoalCard({ goal, i, user, C, onAddMoney, onTogglePause }) {
           padding: "10px 14px", background: C.surfaceAlt, color: C.textSub,
           border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13,
         }}>{goal.paused ? "▶" : "⏸"}</button>
+        <button onClick={onEdit} style={{ padding: "10px 12px", background: C.surfaceAlt, color: C.textMuted, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>✏️</button>
+        <button onClick={onDelete} style={{ padding: "10px 12px", background: C.expenseSoft, color: C.expense, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>🗑</button>
       </div>
     </div>
   );
@@ -68,6 +70,7 @@ export default function GoalsScreen({ goals, setGoals, user, C }) {
   const [addMoneyGoal, setAddMoneyGoal] = useState(null);
   const [addAmount, setAddAmount] = useState("");
   const [showNew, setShowNew] = useState(false);
+  const [editGoal, setEditGoal] = useState(null);
   const [newGoal, setNewGoal] = useState({ name: "", icon: "🎯", target: "", deadline: "", color: C.accent });
   const totalSaved = goals.reduce((s, g) => s + g.current, 0);
 
@@ -94,7 +97,12 @@ export default function GoalsScreen({ goals, setGoals, user, C }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-        {goals.map((goal, i) => <GoalCard key={goal.id} goal={goal} i={i} user={user} C={C} onAddMoney={setAddMoneyGoal} onTogglePause={() => setGoals(gs => gs.map(g => g.id === goal.id ? { ...g, paused: !g.paused } : g))} />)}
+        {goals.map((goal, i) => <GoalCard key={goal.id} goal={goal} i={i} user={user} C={C}
+          onAddMoney={setAddMoneyGoal}
+          onTogglePause={() => setGoals(gs => gs.map(g => g.id === goal.id ? { ...g, paused: !g.paused } : g))}
+          onEdit={() => setEditGoal({ ...goal, target: String(goal.target), deadline: goal.deadline || "" })}
+          onDelete={() => setGoals(gs => gs.filter(g => g.id !== goal.id))}
+        />)}
       </div>
 
       {addMoneyGoal && (
@@ -138,10 +146,36 @@ export default function GoalsScreen({ goals, setGoals, user, C }) {
           </div>
         </Modal>
       )}
+      {editGoal && (
+        <Modal onClose={() => setEditGoal(null)} C={C} width={420}>
+          <div style={{ padding: 28 }}>
+            <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: C.text, marginBottom: 20 }}>Edit Goal</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <input placeholder="Goal name" value={editGoal.name} onChange={e => setEditGoal(g => ({ ...g, name: e.target.value }))}
+                style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, color: C.text, outline: "none" }} />
+              <input placeholder="Target amount" type="number" value={editGoal.target} onChange={e => setEditGoal(g => ({ ...g, target: e.target.value }))}
+                style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, color: C.text, outline: "none" }} />
+              <input type="date" value={editGoal.deadline} onChange={e => setEditGoal(g => ({ ...g, deadline: e.target.value }))}
+                style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, color: C.text, outline: "none", colorScheme: "dark" }} />
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {["🎯","🏠","✈️","💻","🎓","🚗","💍","🏋️","🎮","🌍"].map(em => (
+                  <button key={em} onClick={() => setEditGoal(g => ({ ...g, icon: em }))} style={{
+                    width: 40, height: 40, borderRadius: 10, border: `2px solid ${editGoal.icon === em ? C.accent : "transparent"}`,
+                    background: C.surfaceAlt, cursor: "pointer", fontSize: 20,
+                  }}>{em}</button>
+                ))}
+              </div>
+              <button onClick={() => {
+                if (editGoal.name && editGoal.target) {
+                  setGoals(gs => gs.map(g => g.id === editGoal.id ? { ...g, name: editGoal.name, icon: editGoal.icon, target: parseFloat(editGoal.target), deadline: editGoal.deadline } : g));
+                  setEditGoal(null);
+                }
+              }} style={{ padding: "13px", background: C.accent, color: "white", border: "none", borderRadius: 14, cursor: "pointer", fontWeight: 700, fontSize: 15, boxShadow: `0 8px 24px ${C.accentGlow}` }}>Save Changes</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DEBT SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
