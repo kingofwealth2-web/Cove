@@ -43,17 +43,6 @@ export default function App() {
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  // Re-lock when app comes back to foreground (PWA resume)
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible" && pinHash) {
-        setPinLocked(true);
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [pinHash]);
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -73,6 +62,17 @@ export default function App() {
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
     saveOnboarding, saveSettings, deleteAllData, snapshots, saveNetworthSnapshot,
   } = useSupabaseData(session);
+
+  // Re-lock when app comes back to foreground (PWA resume)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && pinHash) {
+        setPinLocked(true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [pinHash]);
 
   const base = theme === "dark" ? darkColors : lightColors;
   const C = { ...base, accent: accentChoice.value, accentSoft: accentChoice.soft, accentGlow: accentChoice.glow, accentDark: accentChoice.dark };
