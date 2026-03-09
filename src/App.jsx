@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { darkColors, lightColors, accentOptions } from "./tokens/colors";
 import { springs } from "./tokens/springs";
 import { supabase } from "./lib/supabase";
@@ -161,10 +161,9 @@ export default function App() {
   }
 
   if (!session) return <AuthScreen />;
-  // Prevent onboarding from running twice — only show if profile truly missing
   if (!profile && !loading) return <Onboarding onComplete={handleOnboardingComplete} />;
 
-  const screens = useMemo(() => ({
+  const screens = {
     home:          <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} />,
     budget:        <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} />,
     trends:        <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} />,
@@ -174,8 +173,7 @@ export default function App() {
     networth:      <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} />,
     notifications: <NotificationsScreen notifications={notifications} setNotifications={() => {}} C={C} />,
     settings:      <SettingsScreen user={user} setUser={setUser} C={C} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} />,
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transactions, categories, bills, goals, debts, assets, liabilities, notifications, snapshots, user, C, theme, accentChoice]);
+  };
 
   return (
     <>
