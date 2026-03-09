@@ -189,41 +189,52 @@ export default function Dashboard({ transactions, categories, user, C, onAdd, on
       </div>
 
       <div style={{
-        background: `linear-gradient(135deg, ${C.surfaceAlt} 0%, ${C.surface} 100%)`,
-        borderRadius: 24, padding: isMobile ? "24px 20px" : "32px 36px",
-        border: `1px solid ${C.borderStrong}`, boxShadow: C.shadowLg,
+        background: `linear-gradient(135deg, ${C.accent} 0%, #7C3AED 60%, #4F46E5 100%)`,
+        borderRadius: 24, padding: isMobile ? "28px 24px" : "36px 40px",
+        boxShadow: `0 20px 60px ${C.accentGlow}, 0 8px 24px rgba(0,0,0,0.4)`,
         position: "relative", overflow: "hidden",
         animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "40ms",
       }}>
-        <div style={{ position: "absolute", top: -80, right: -80, width: 280, height: 280, background: `radial-gradient(circle, ${C.accentGlow} 0%, transparent 70%)`, pointerEvents: "none" }} />
-        <Label C={C} style={{ marginBottom: 8 }}>Available This Month</Label>
-        <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: isMobile ? 48 : 68, fontWeight: 700, letterSpacing: "-2px", color: safeToSpend >= 0 ? C.text : C.expense, lineHeight: 1, marginBottom: 20 }}>
+        {/* Decorative orb */}
+        <div style={{ position: "absolute", top: -60, right: -60, width: 320, height: 320, borderRadius: "50%", background: "rgba(255,255,255,0.08)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -80, right: 60, width: 200, height: 200, borderRadius: "50%", background: "rgba(255,255,255,0.05)", pointerEvents: "none" }} />
+
+        {/* Label */}
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.65)", marginBottom: 10 }}>
+          Available This Month
+        </div>
+
+        {/* Big number */}
+        <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: isMobile ? 52 : 72, fontWeight: 700, letterSpacing: "-2px", color: "white", lineHeight: 1, marginBottom: 28 }}>
           {user.currency} {safeNum.toLocaleString()}
         </div>
-        <div style={{ display: "flex", gap: isMobile ? 16 : 28, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 26, height: 26, borderRadius: 8, background: C.incomeSoft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>↑</div>
-            <span style={{ fontSize: 14, color: C.textSub }}><span style={{ color: C.income, fontWeight: 600 }}>{user.currency} {incNum.toLocaleString()}</span> income</span>
+
+        {/* Income / Spent split */}
+        <div style={{ display: "flex", alignItems: "stretch", gap: 0, marginBottom: 24 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>Total In</div>
+            <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: isMobile ? 22 : 26, color: "white", fontWeight: 700, letterSpacing: "-0.5px" }}>{user.currency} {incNum.toLocaleString()}</div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 26, height: 26, borderRadius: 8, background: C.expenseSoft, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>↓</div>
-            <span style={{ fontSize: 14, color: C.textSub }}><span style={{ color: C.expense, fontWeight: 600 }}>{user.currency} {spentNum.toLocaleString()}</span> spent</span>
+          <div style={{ width: 1, background: "rgba(255,255,255,0.2)", margin: "0 24px" }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 }}>Total Out</div>
+            <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: isMobile ? 22 : 26, color: "white", fontWeight: 700, letterSpacing: "-0.5px" }}>{user.currency} {spentNum.toLocaleString()}</div>
           </div>
         </div>
-        <div style={{ marginTop: 20 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={{ fontSize: 12, color: C.textMuted }}>Day {dayOfMonth} of {daysInMonth}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: spendPct > monthPct + 10 ? C.warning : C.textMuted }}>
+
+        {/* Progress bar */}
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>Day {dayOfMonth} of {daysInMonth}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: spendPct > monthPct + 10 ? "#FFD60A" : "rgba(255,255,255,0.8)" }}>
               {spendPct > monthPct + 10 ? "⚠ Spending ahead of pace" : "✓ On track"}
             </span>
           </div>
-          <div style={{ position: "relative", height: 6, borderRadius: 99, background: C.surfaceHover }}>
-            <div style={{ position: "absolute", inset: 0, borderRadius: 99, overflow: "hidden" }}>
-              <ProgressBar value={monthPct} max={100} color={C.textMuted} delay={200} height={6} C={C} />
-            </div>
-          </div>
-          <div style={{ position: "relative", height: 6, borderRadius: 99, marginTop: -6 }}>
-            <ProgressBar value={spendPct} max={100} color={spendPct > monthPct + 10 ? C.warning : C.accent} delay={400} height={6} C={C} />
+          <div style={{ position: "relative", height: 6, borderRadius: 99, background: "rgba(255,255,255,0.15)" }}>
+            {/* Month progress ghost */}
+            <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${Math.min(monthPct, 100)}%`, borderRadius: 99, background: "rgba(255,255,255,0.25)", transition: "width 600ms ease" }} />
+            {/* Spend progress */}
+            <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: `${Math.min(spendPct, 100)}%`, borderRadius: 99, background: spendPct > monthPct + 10 ? "#FFD60A" : "white", transition: "width 800ms ease", boxShadow: "0 0 8px rgba(255,255,255,0.5)" }} />
           </div>
         </div>
       </div>
