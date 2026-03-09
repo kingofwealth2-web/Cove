@@ -55,7 +55,7 @@ export default function App() {
     profile, loading,
     transactions, categories, bills, goals, debts, assets, liabilities, notifications,
     addTransaction, deleteTransaction, updateTransaction, setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
-    saveOnboarding,
+    saveOnboarding, saveSettings,
   } = useSupabaseData(session);
 
   const base = theme === "dark" ? darkColors : lightColors;
@@ -94,11 +94,19 @@ export default function App() {
     ? { name: profile.name, income: profile.monthly_income, currency: profile.currency }
     : { name: "User", income: 0, currency: "GHS" };
 
+  const handleThemeChange = (t) => {
+    setTheme(t);
+    saveSettings({ theme: t });
+  };
+
+  const handleAccentChange = (a) => {
+    setAccentChoice(a);
+    saveSettings({ accentColor: a.value });
+  };
+
   const setUser = async (updater) => {
     const next = typeof updater === "function" ? updater(user) : updater;
-    await supabase.from("profiles").update({
-      name: next.name, currency: next.currency, monthly_income: next.income,
-    }).eq("id", session.user.id);
+    await saveSettings({ name: next.name, currency: next.currency, income: next.income });
   };
 
   if (authLoading || (session && loading)) {
@@ -122,7 +130,7 @@ export default function App() {
     debt: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} />,
     networth: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} />,
     notifications: <NotificationsScreen notifications={notifications} setNotifications={() => {}} C={C} />,
-    settings: <SettingsScreen user={user} setUser={setUser} C={C} setTheme={setTheme} theme={theme} accentChoice={accentChoice} setAccentChoice={setAccentChoice} onSignOut={handleSignOut} />,
+    settings: <SettingsScreen user={user} setUser={setUser} C={C} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} />,
   };
 
   return (

@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
-import {
-  INIT_CATEGORIES, INIT_TRANSACTIONS, INIT_BILLS,
-  INIT_GOALS, INIT_DEBTS, INIT_ASSETS, INIT_LIABILITIES, INIT_NOTIFICATIONS,
-} from "../data/initial";
+import { INIT_NOTIFICATIONS } from "../data/initial";
 
 export function useSupabaseData(session) {
   const [profile, setProfile] = useState(null);
@@ -19,39 +16,41 @@ export function useSupabaseData(session) {
 
   const uid = session?.user?.id;
 
-  // ── Load all data ────────────────────────────────────────────────────────
+  // ── Mappers ──────────────────────────────────────────────────────────────
+  const mapCat  = c => ({ id: c.id, name: c.name, icon: c.icon, color: c.color, budget: c.budget_amount, group: c.group_name, rollover: c.rollover });
+  const mapTx   = t => ({ id: t.id, categoryId: t.category_id, amount: t.amount, type: t.type, note: t.note, date: t.date, isRecurring: t.is_recurring });
+  const mapBill = b => ({ id: b.id, name: b.name, amount: b.amount, dueDay: b.due_day, categoryId: b.category_id, isSubscription: b.is_subscription, paid: b.paid });
+  const mapGoal = g => ({ id: g.id, name: g.name, icon: g.icon, target: g.target_amount, current: g.current_amount, deadline: g.deadline, color: g.color, paused: g.paused });
+  const mapDebt = d => ({ id: d.id, lender: d.lender, originalAmount: d.original_amount, currentBalance: d.current_balance, interestRate: d.interest_rate, minimumPayment: d.minimum_payment, dueDay: d.due_day, type: d.type });
+  const mapAsset = a => ({ id: a.id, name: a.name, type: a.type, value: a.value });
+  const mapLiab  = l => ({ id: l.id, name: l.name, type: l.type, balance: l.balance });
+
+  // ── Load all ─────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
     if (!uid) return;
     setLoading(true);
     try {
       const [
-        { data: prof },
-        { data: cats },
-        { data: txs },
-        { data: bls },
-        { data: gls },
-        { data: dbs },
-        { data: ast },
-        { data: lib },
+        { data: prof }, { data: cats }, { data: txs }, { data: bls },
+        { data: gls }, { data: dbs }, { data: ast }, { data: lib },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", uid).single(),
         supabase.from("categories").select("*").eq("user_id", uid).order("sort_order"),
         supabase.from("transactions").select("*").eq("user_id", uid).order("date", { ascending: false }),
-        supabase.from("bills").select("*").eq("user_id", uid),
+        supabase.from("bills").select("*").eq("user_id", uid).order("due_day"),
         supabase.from("goals").select("*").eq("user_id", uid),
         supabase.from("debts").select("*").eq("user_id", uid),
         supabase.from("assets").select("*").eq("user_id", uid),
         supabase.from("liabilities").select("*").eq("user_id", uid),
       ]);
-
       setProfile(prof || null);
       setCategoriesState(cats?.length ? cats.map(mapCat) : []);
       setTransactionsState(txs?.length ? txs.map(mapTx) : []);
       setBillsState(bls?.length ? bls.map(mapBill) : []);
       setGoalsState(gls?.length ? gls.map(mapGoal) : []);
       setDebtsState(dbs?.length ? dbs.map(mapDebt) : []);
-      setAssetsState(ast?.length ? ast : []);
-      setLiabilitiesState(lib?.length ? lib : []);
+      setAssetsState(ast?.length ? ast.map(mapAsset) : []);
+      setLiabilitiesState(lib?.length ? lib.map(mapLiab) : []);
     } finally {
       setLoading(false);
     }
@@ -59,42 +58,57 @@ export function useSupabaseData(session) {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
-  // ── Mappers (DB → app shape) ─────────────────────────────────────────────
-  const mapCat = c => ({ id: c.id, name: c.name, icon: c.icon, color: c.color, budget: c.budget_amount, group: c.group_name, rollover: c.rollover });
-  const mapTx = t => ({ id: t.id, categoryId: t.category_id, amount: t.amount, type: t.type, note: t.note, date: t.date, isRecurring: t.is_recurring });
-  const mapBill = b => ({ id: b.id, name: b.name, amount: b.amount, dueDay: b.due_day, categoryId: b.category_id, isSubscription: b.is_subscription, paid: b.paid });
-  const mapGoal = g => ({ id: g.id, name: g.name, icon: g.icon, target: g.target_amount, current: g.current_amount, deadline: g.deadline, color: g.color, paused: g.paused });
-  const mapDebt = d => ({ id: d.id, lender: d.lender, originalAmount: d.original_amount, currentBalance: d.current_balance, interestRate: d.interest_rate, minimumPayment: d.minimum_payment, dueDay: d.due_day, type: d.type });
+  // ── Monthly bill reset ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!uid || !profile || !bills.length) return;
+    const now = new Date();
+    const thisMonth = now.getFullYear() + "-" + (now.getMonth() + 1);
+    if (profile.last_bill_reset === thisMonth) return;
+    const reset = bills.map(b => ({ ...b, paid: false }));
+    setBillsState(reset);
+    supabase.from("bills").update({ paid: false }).eq("user_id", uid).then(() =>
+      supabase.from("profiles").update({ last_bill_reset: thisMonth }).eq("id", uid)
+    );
+  }, [uid, profile?.last_bill_reset]);
 
-  // ── Onboarding: save profile + seed default categories only ────────────────
+  // ── Onboarding ───────────────────────────────────────────────────────────
   const saveOnboarding = async ({ name, income, currency, accent, theme }) => {
-    // Save profile
+    const now = new Date();
+    const thisMonth = now.getFullYear() + "-" + (now.getMonth() + 1);
     await supabase.from("profiles").upsert({
-      id: uid, name, currency,
-      accent_color: accent.value,
-      theme,
-      monthly_income: income,
+      id: uid, name, currency, accent_color: accent.value,
+      theme, monthly_income: income, last_bill_reset: thisMonth,
     });
-
-    // Seed default categories (no transactions/bills/goals — user starts fresh)
-    const defaultCategories = [
-      { name: "Food", icon: "🍔", color: "#FF9F0A", budget: Math.round(income * 0.20), group: "Living", rollover: false },
-      { name: "Transport", icon: "🚗", color: "#5AC8FA", budget: Math.round(income * 0.10), group: "Living", rollover: false },
-      { name: "Rent", icon: "🏠", color: "#BF5AF2", budget: Math.round(income * 0.30), group: "Living", rollover: false },
-      { name: "Utilities", icon: "💡", color: "#FF6B35", budget: Math.round(income * 0.06), group: "Living", rollover: true },
-      { name: "Health", icon: "❤️", color: "#FF375F", budget: Math.round(income * 0.07), group: "Wellness", rollover: false },
-      { name: "Fun", icon: "🎉", color: "#6366F1", budget: Math.round(income * 0.08), group: "Lifestyle", rollover: false },
-      { name: "Savings", icon: "💰", color: "#34C759", budget: Math.round(income * 0.12), group: "Goals", rollover: false },
-      { name: "Education", icon: "📚", color: "#00C7BE", budget: Math.round(income * 0.05), group: "Growth", rollover: false },
+    const defaults = [
+      { name: "Food",      icon: "🍔", color: "#FF9F0A", pct: 0.20, group: "Living",    rollover: false },
+      { name: "Transport", icon: "🚗", color: "#5AC8FA", pct: 0.10, group: "Living",    rollover: false },
+      { name: "Rent",      icon: "🏠", color: "#BF5AF2", pct: 0.30, group: "Living",    rollover: false },
+      { name: "Utilities", icon: "💡", color: "#FF6B35", pct: 0.06, group: "Living",    rollover: true  },
+      { name: "Health",    icon: "❤️", color: "#FF375F", pct: 0.07, group: "Wellness",  rollover: false },
+      { name: "Fun",       icon: "🎉", color: "#6366F1", pct: 0.08, group: "Lifestyle", rollover: false },
+      { name: "Savings",   icon: "💰", color: "#34C759", pct: 0.12, group: "Goals",     rollover: false },
+      { name: "Education", icon: "📚", color: "#00C7BE", pct: 0.05, group: "Growth",    rollover: false },
     ];
-
-    const cats = defaultCategories.map((c, i) => ({
-      user_id: uid, name: c.name, icon: c.icon, color: c.color,
-      budget_amount: c.budget, group_name: c.group, rollover: c.rollover, sort_order: i,
-    }));
-    await supabase.from("categories").insert(cats);
-
+    await supabase.from("categories").insert(
+      defaults.map((c, i) => ({
+        user_id: uid, name: c.name, icon: c.icon, color: c.color,
+        budget_amount: Math.round(income * c.pct), group_name: c.group, rollover: c.rollover, sort_order: i,
+      }))
+    );
     await loadAll();
+  };
+
+  // ── Settings persistence ─────────────────────────────────────────────────
+  const saveSettings = async (updates) => {
+    const dbUpdates = {};
+    if (updates.theme !== undefined)      dbUpdates.theme = updates.theme;
+    if (updates.accentColor !== undefined) dbUpdates.accent_color = updates.accentColor;
+    if (updates.name !== undefined)       dbUpdates.name = updates.name;
+    if (updates.currency !== undefined)   dbUpdates.currency = updates.currency;
+    if (updates.income !== undefined)     dbUpdates.monthly_income = updates.income;
+    if (!Object.keys(dbUpdates).length) return;
+    await supabase.from("profiles").update(dbUpdates).eq("id", uid);
+    setProfile(p => ({ ...p, ...dbUpdates }));
   };
 
   // ── Transactions ─────────────────────────────────────────────────────────
@@ -112,75 +126,105 @@ export function useSupabaseData(session) {
   };
 
   const updateTransaction = async (id, updates) => {
-    const mapped = {
-      category_id: updates.categoryId || null,
-      amount: updates.amount, type: updates.type,
-      note: updates.note, date: updates.date, is_recurring: updates.isRecurring,
-    };
     setTransactionsState(ts => ts.map(t => t.id === id ? { ...t, ...updates } : t));
-    await supabase.from("transactions").update(mapped).eq("id", id).eq("user_id", uid);
+    await supabase.from("transactions").update({
+      category_id: updates.categoryId || null, amount: updates.amount,
+      type: updates.type, note: updates.note, date: updates.date, is_recurring: updates.isRecurring,
+    }).eq("id", id).eq("user_id", uid);
+  };
+
+  // ── Generic upsert/delete helper ─────────────────────────────────────────
+  const syncTable = async (table, prev, next, toRow) => {
+    const prevIds = new Set(prev.map(x => x.id));
+    const nextIds = new Set(next.map(x => x.id));
+    // Delete removed rows
+    const toDelete = [...prevIds].filter(id => !nextIds.has(id));
+    for (const id of toDelete) {
+      await supabase.from(table).delete().eq("id", id).eq("user_id", uid);
+    }
+    // Insert new / update existing
+    for (const item of next) {
+      const row = { ...toRow(item), user_id: uid };
+      if (!prevIds.has(item.id)) {
+        await supabase.from(table).insert(row);
+      } else {
+        await supabase.from(table).update(row).eq("id", item.id).eq("user_id", uid);
+      }
+    }
   };
 
   // ── Categories ───────────────────────────────────────────────────────────
   const setCategories = async (updater) => {
-    const next = typeof updater === "function" ? updater(categories) : updater;
+    const prev = categories;
+    const next = typeof updater === "function" ? updater(prev) : updater;
     setCategoriesState(next);
-    // Sync changed categories back
-    for (const cat of next) {
-      await supabase.from("categories").update({
-        name: cat.name, icon: cat.icon, color: cat.color,
-        budget_amount: cat.budget, group_name: cat.group, rollover: cat.rollover,
-      }).eq("id", cat.id).eq("user_id", uid);
-    }
+    await syncTable("categories", prev, next, (c, i) => ({
+      name: c.name, icon: c.icon, color: c.color,
+      budget_amount: c.budget, group_name: c.group, rollover: c.rollover,
+      sort_order: next.indexOf(c),
+    }));
   };
 
   // ── Bills ────────────────────────────────────────────────────────────────
   const setBills = async (updater) => {
-    const next = typeof updater === "function" ? updater(bills) : updater;
+    const prev = bills;
+    const next = typeof updater === "function" ? updater(prev) : updater;
     setBillsState(next);
-    for (const bill of next) {
-      await supabase.from("bills").update({ paid: bill.paid }).eq("id", bill.id).eq("user_id", uid);
-    }
+    await syncTable("bills", prev, next, b => ({
+      name: b.name, amount: b.amount, due_day: b.dueDay,
+      is_subscription: b.isSubscription, paid: b.paid, category_id: b.categoryId || null,
+    }));
   };
 
   // ── Goals ────────────────────────────────────────────────────────────────
   const setGoals = async (updater) => {
-    const next = typeof updater === "function" ? updater(goals) : updater;
+    const prev = goals;
+    const next = typeof updater === "function" ? updater(prev) : updater;
     setGoalsState(next);
-    for (const goal of next) {
-      await supabase.from("goals").update({
-        current_amount: goal.current, paused: goal.paused,
-      }).eq("id", goal.id).eq("user_id", uid);
-    }
+    await syncTable("goals", prev, next, g => ({
+      name: g.name, icon: g.icon, target_amount: g.target,
+      current_amount: g.current || 0, deadline: g.deadline || null,
+      color: g.color, paused: g.paused || false,
+    }));
   };
 
   // ── Debts ────────────────────────────────────────────────────────────────
   const setDebts = async (updater) => {
-    const next = typeof updater === "function" ? updater(debts) : updater;
+    const prev = debts;
+    const next = typeof updater === "function" ? updater(prev) : updater;
     setDebtsState(next);
-    for (const debt of next) {
-      await supabase.from("debts").update({
-        current_balance: debt.currentBalance,
-      }).eq("id", debt.id).eq("user_id", uid);
-    }
+    await syncTable("debts", prev, next, d => ({
+      lender: d.lender, original_amount: d.originalAmount,
+      current_balance: d.currentBalance, interest_rate: d.interestRate || 0,
+      minimum_payment: d.minimumPayment || 0, due_day: d.dueDay || 1, type: d.type || "loan",
+    }));
   };
 
   // ── Assets ───────────────────────────────────────────────────────────────
   const setAssets = async (updater) => {
-    const next = typeof updater === "function" ? updater(assets) : updater;
+    const prev = assets;
+    const next = typeof updater === "function" ? updater(prev) : updater;
     setAssetsState(next);
+    await syncTable("assets", prev, next, a => ({
+      name: a.name, type: a.type, value: a.value,
+    }));
   };
 
   // ── Liabilities ──────────────────────────────────────────────────────────
   const setLiabilities = async (updater) => {
-    const next = typeof updater === "function" ? updater(liabilities) : updater;
+    const prev = liabilities;
+    const next = typeof updater === "function" ? updater(prev) : updater;
     setLiabilitiesState(next);
+    await syncTable("liabilities", prev, next, l => ({
+      name: l.name, type: l.type, balance: l.balance,
+    }));
   };
 
   return {
     profile, loading,
     transactions, categories, bills, goals, debts, assets, liabilities, notifications,
-    addTransaction, deleteTransaction, updateTransaction, setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
-    saveOnboarding,
+    addTransaction, deleteTransaction, updateTransaction,
+    setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
+    saveOnboarding, saveSettings,
   };
 }
