@@ -8,7 +8,30 @@ function useIsMobile() {
   return m;
 }
 
+// Defined OUTSIDE SettingsScreen — if defined inside, React remounts them on every render, resetting scroll
+function Toggle({ value, onChange, label, C }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${C.border}` }}>
+      <span style={{ fontSize: 14, color: C.text }}>{label}</span>
+      <button onClick={() => onChange(!value)} style={{
+        width: 44, height: 26, borderRadius: 99, border: "none", cursor: "pointer",
+        background: value ? C.accent : C.surfaceAlt,
+        position: "relative", transition: "background 200ms", flexShrink: 0,
+      }}>
+        <div style={{ width: 20, height: 20, borderRadius: "50%", background: "white", position: "absolute", top: 3, left: value ? 21 : 3, transition: `left 200ms ${springs.bounce}`, boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+      </button>
+    </div>
+  );
+}
 
+function Section({ title, children, C }) {
+  return (
+    <div style={{ background: C.surface, borderRadius: 20, padding: "20px 24px", border: `1px solid ${C.border}` }}>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}>{title}</h3>
+      {children}
+    </div>
+  );
+}
 
 export default function SettingsScreen({ user, setUser, C, setTheme, theme, accentChoice, setAccentChoice, onSignOut, transactions, categories, onDeleteAllData }) {
   const isMobile = useIsMobile();
@@ -37,31 +60,11 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
     URL.revokeObjectURL(url);
   };
 
-  const Toggle = ({ value, onChange, label }) => (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${C.border}` }}>
-      <span style={{ fontSize: 14, color: C.text }}>{label}</span>
-      <button onClick={() => onChange(!value)} style={{
-        width: 44, height: 26, borderRadius: 99, border: "none", cursor: "pointer",
-        background: value ? C.accent : C.surfaceAlt,
-        position: "relative", transition: `background 200ms`, flexShrink: 0,
-      }}>
-        <div style={{ width: 20, height: 20, borderRadius: "50%", background: "white", position: "absolute", top: 3, left: value ? 21 : 3, transition: `left 200ms ${springs.bounce}`, boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
-      </button>
-    </div>
-  );
-
-  const Section = ({ title, children }) => (
-    <div style={{ background: C.surface, borderRadius: 20, padding: "20px 24px", border: `1px solid ${C.border}` }}>
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 16 }}>{title}</h3>
-      {children}
-    </div>
-  );
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 640 }}>
-      <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px", animation: `slideUp 300ms ${springs.bounce}` }}>Settings</h1>
+      <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px" }}>Settings</h1>
 
-      <Section title="Profile">
+      <Section title="Profile" C={C}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
           <div style={{ width: 56, height: 56, borderRadius: "50%", background: `linear-gradient(135deg, ${C.accent}, #818CF8)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, color: "white" }}>{user.name.charAt(0).toUpperCase()}</div>
           <div>
@@ -74,7 +77,7 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
         <input placeholder="Email (optional)" style={{ width: "100%", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 14px", fontSize: 14, color: C.text, outline: "none" }} />
       </Section>
 
-      <Section title="Appearance">
+      <Section title="Appearance" C={C}>
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 14, color: C.text, marginBottom: 10 }}>Theme</div>
           <div style={{ display: "flex", background: C.surfaceAlt, borderRadius: 12, padding: 4, gap: 4 }}>
@@ -104,7 +107,7 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
         </div>
       </Section>
 
-      <Section title="Currency & Budget">
+      <Section title="Currency & Budget" C={C}>
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 14, color: C.text, marginBottom: 8 }}>Currency</div>
           <select value={user.currency} onChange={e => setUser(u => ({ ...u, currency: e.target.value }))}
@@ -126,19 +129,19 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
         </div>
       </Section>
 
-      <Section title="Notifications">
+      <Section title="Notifications" C={C}>
         {Object.entries(notifToggles).map(([key, val]) => {
           const labels = { budgetWarning: "80% budget warning", overBudget: "Over budget alert", billReminder: "Bill reminders", streak: "Logging streaks", monthlyRecap: "Monthly recap", anomaly: "Anomaly detection" };
-          return <Toggle key={key} value={val} onChange={v => setNotifToggles(t => ({ ...t, [key]: v }))} label={labels[key]} />;
+          return <Toggle key={key} value={val} onChange={v => setNotifToggles(t => ({ ...t, [key]: v }))} label={labels[key]} C={C} />;
         })}
       </Section>
 
-      <Section title="Security">
-        <Toggle value={pinEnabled} onChange={setPinEnabled} label="PIN Lock" />
-        <Toggle value={false} onChange={() => {}} label="Biometric Login" />
+      <Section title="Security" C={C}>
+        <Toggle value={pinEnabled} onChange={setPinEnabled} label="PIN Lock" C={C} />
+        <Toggle value={false} onChange={() => {}} label="Biometric Login" C={C} />
       </Section>
 
-      <Section title="Data">
+      <Section title="Data" C={C}>
         {[
           { label: "Export as CSV", icon: "📥", action: exportCSV },
           { label: "Export as JSON", icon: "📤", action: exportJSON },
@@ -146,7 +149,7 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
           <button key={item.label} onClick={item.action} style={{
             display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0",
             background: "none", border: "none", borderBottom: `1px solid ${C.border}`,
-            cursor: "pointer", color: C.text, fontSize: 14, textAlign: "left", transition: `color 150ms`,
+            cursor: "pointer", color: C.text, fontSize: 14, textAlign: "left", transition: "color 150ms",
           }}
           onMouseEnter={e => e.currentTarget.style.color = C.accent}
           onMouseLeave={e => e.currentTarget.style.color = C.text}
@@ -167,7 +170,7 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
         )}
       </Section>
 
-      <Section title="Account">
+      <Section title="Account" C={C}>
         <button onClick={onSignOut} style={{
           display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0",
           background: "none", border: "none", cursor: "pointer", color: C.expense, fontSize: 14, textAlign: "left",
@@ -176,7 +179,7 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
         </button>
       </Section>
 
-      <Section title="About">
+      <Section title="About" C={C}>
         <div style={{ fontSize: 14, color: C.textSub, lineHeight: 1.8 }}>
           <div>Version 1.0.0</div>
           <div>Built with care. Designed for you.</div>
@@ -185,7 +188,3 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// APP ROOT
-// ─────────────────────────────────────────────────────────────────────────────
