@@ -123,10 +123,10 @@ export default function App() {
     setToast("Transaction saved ✓");
   };
 
-  const handleOnboardingComplete = async ({ name, income, currency, accent, theme: t }) => {
+  const handleOnboardingComplete = async ({ name, incomeTypes, currency, accent, theme: t }) => {
     setTheme(t);
     setAccentChoice(accent);
-    await saveOnboarding({ name, income, currency, accent, theme: t });
+    await saveOnboarding({ name, incomeTypes, currency, accent, theme: t });
   };
 
   const handleSignOut = async () => {

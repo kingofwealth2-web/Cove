@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "../lib/supabase";
-import { INIT_NOTIFICATIONS } from "../data/initial";
 
 export function useSupabaseData(session) {
   const [profile, setProfile] = useState(null);
@@ -12,12 +11,66 @@ export function useSupabaseData(session) {
   const [debts, setDebtsState] = useState([]);
   const [assets, setAssetsState] = useState([]);
   const [liabilities, setLiabilitiesState] = useState([]);
-  const [notifications] = useState(INIT_NOTIFICATIONS);
+
+  const expenseCategories = categories.filter(c => !c.is_income);
+  // ── Notifications generated from real data ──────────────────────────────
+  const notifications = useMemo(() => {
+    const now = new Date();
+    const items = [];
+    const monthTx = transactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const totalIncome = monthTx.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+    const totalSpent  = monthTx.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+    const dayOfMonth  = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const monthPct    = (dayOfMonth / daysInMonth) * 100;
+    const spendPct    = totalIncome > 0 ? (totalSpent / totalIncome) * 100 : 0;
+
+    // Over budget categories
+    expenseCategories.forEach(cat => {
+      const spent = monthTx.filter(t => t.type === "expense" && t.categoryId === cat.id).reduce((s, t) => s + t.amount, 0);
+      if (cat.budget > 0 && spent > cat.budget) {
+        items.push({ id: `over-${cat.id}`, type: "over", title: `${cat.name} budget exceeded`, body: `You've spent ${spent.toLocaleString()} of your ${cat.budget.toLocaleString()} budget.`, time: "This month", read: false });
+      } else if (cat.budget > 0 && spent / cat.budget > 0.8) {
+        items.push({ id: `warn-${cat.id}`, type: "warning", title: `${cat.name} at 80%`, body: `You've used ${Math.round(spent/cat.budget*100)}% of your ${cat.name} budget.`, time: "This month", read: false });
+      }
+    });
+
+    // Spending pace
+    if (spendPct > monthPct + 15 && totalIncome > 0) {
+      items.push({ id: "pace", type: "warning", title: "Spending ahead of pace", body: `You've spent ${Math.round(spendPct)}% of income but we're only ${Math.round(monthPct)}% through the month.`, time: "Today", read: false });
+    }
+
+    // Overdue bills
+    bills.filter(b => !b.paid && b.dueDay < dayOfMonth).forEach(b => {
+      items.push({ id: `bill-${b.id}`, type: "bill", title: `${b.name} overdue`, body: `Payment of ${b.amount.toLocaleString()} was due on the ${b.dueDay}th.`, time: `Due ${b.dueDay}th`, read: false });
+    });
+
+    // Upcoming bills (due in next 3 days)
+    bills.filter(b => !b.paid && b.dueDay >= dayOfMonth && b.dueDay <= dayOfMonth + 3).forEach(b => {
+      items.push({ id: `upcoming-${b.id}`, type: "bill", title: `${b.name} due soon`, body: `${b.amount.toLocaleString()} due on the ${b.dueDay}th.`, time: `In ${b.dueDay - dayOfMonth + 1} days`, read: false });
+    });
+
+    // Monthly recap (last 3 days of month)
+    if (dayOfMonth >= daysInMonth - 2 && totalIncome > 0) {
+      const saved = totalIncome - totalSpent;
+      items.push({ id: "recap", type: "recap", title: "Month wrapping up", body: saved > 0 ? `You saved ${saved.toLocaleString()} this month. Great work!` : `You spent ${Math.abs(saved).toLocaleString()} more than you earned this month.`, time: "End of month", read: false });
+    }
+
+    // Positive streak
+    if (transactions.length >= 5) {
+      items.push({ id: "streak", type: "streak", title: "Staying on top of it", body: `You've logged ${transactions.length} transactions. Keep it up!`, time: "All time", read: true });
+    }
+
+    return items.length > 0 ? items : [{ id: "empty", type: "recap", title: "All clear", body: "No alerts right now. Add transactions to get personalised insights.", time: "Now", read: true }];
+  }, [transactions, bills, expenseCategories]);
 
   const uid = session?.user?.id;
 
   // ── Mappers ──────────────────────────────────────────────────────────────
-  const mapCat  = c => ({ id: c.id, name: c.name, icon: c.icon, color: c.color, budget: c.budget_amount, group: c.group_name, rollover: c.rollover });
+  const mapCat  = c => ({ id: c.id, name: c.name, icon: c.icon, color: c.color, budget: c.budget_amount, group: c.group_name, rollover: c.rollover, is_income: c.is_income || false });
   const mapTx   = t => ({ id: t.id, categoryId: t.category_id, amount: t.amount, type: t.type, note: t.note, date: t.date, isRecurring: t.is_recurring });
   const mapBill = b => ({ id: b.id, name: b.name, amount: b.amount, dueDay: b.due_day, categoryId: b.category_id, isSubscription: b.is_subscription, paid: b.paid });
   const mapGoal = g => ({ id: g.id, name: g.name, icon: g.icon, target: g.target_amount, current: g.current_amount, deadline: g.deadline, color: g.color, paused: g.paused });
@@ -183,6 +236,7 @@ export function useSupabaseData(session) {
     await syncTable("categories", prev, next, (c, i) => ({
       name: c.name, icon: c.icon, color: c.color,
       budget_amount: c.budget, group_name: c.group, rollover: c.rollover,
+      is_income: c.is_income || false,
       sort_order: next.indexOf(c),
     }));
   };

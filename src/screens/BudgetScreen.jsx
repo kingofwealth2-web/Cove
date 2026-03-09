@@ -30,7 +30,8 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
     return d.getMonth() === viewDate.getMonth() && d.getFullYear() === viewDate.getFullYear();
   });
 
-  const totalBudgeted = categories.reduce((s, c) => s + c.budget, 0);
+  const expenseCategories = categories.filter(c => !c.is_income);
+  const totalBudgeted = expenseCategories.reduce((s, c) => s + c.budget, 0);
   const totalSpent = monthTx.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
 
   const budgetNum = useCountUp(totalBudgeted, 600, 100, [totalBudgeted, monthOffset]);
@@ -71,7 +72,7 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {categories.map((cat, i) => {
+        {expenseCategories.map((cat, i) => {
           const catTx = monthTx.filter(t => t.type === "expense" && t.categoryId === cat.id);
           const spent = catTx.reduce((s, t) => s + t.amount, 0);
           const pct = cat.budget > 0 ? (spent / cat.budget) * 100 : 0;
@@ -112,11 +113,11 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
                     <span style={{ fontSize: 13, color: C.textMuted }}>{user.currency}</span>
                     <input
                       type="number"
-                      value={editingBudget[cat.id] ?? (cat.budget_amount ?? cat.budget ?? 0)}
+                      value={editingBudget[cat.id] ?? (cat.budget ?? 0)}
                       onChange={e => setEditingBudget(prev => ({ ...prev, [cat.id]: e.target.value }))}
                       onBlur={() => {
                         const val = parseFloat(editingBudget[cat.id]);
-                        if (!isNaN(val)) setCategories(cats => cats.map(c => c.id === cat.id ? { ...c, budget_amount: val, budget: val } : c));
+                        if (!isNaN(val)) setCategories(cats => cats.map(c => c.id === cat.id ? { ...c, budget: val } : c));
                         setEditingBudget(prev => { const n = { ...prev }; delete n[cat.id]; return n; });
                       }}
                       onKeyDown={e => e.key === "Enter" && e.currentTarget.blur()}
@@ -159,7 +160,7 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => {
                 if (newCat.name && newCat.budget) {
-                  setCategories(cats => [...cats, { id: `c${Date.now()}`, name: newCat.name, icon: newCat.icon, color: C.accent, budget: parseFloat(newCat.budget), group: "Custom", rollover: false }]);
+                  setCategories(cats => [...cats, { id: `c${Date.now()}`, name: newCat.name, icon: newCat.icon, color: C.accent, budget: parseFloat(newCat.budget) || 0, group: "Custom", rollover: false, is_income: false }]);
                   setAddingCat(false);
                   setNewCat({ name: "", icon: "📦", color: "#6366F1", budget: "" });
                 }
