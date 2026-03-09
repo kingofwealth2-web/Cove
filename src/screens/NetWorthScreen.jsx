@@ -5,7 +5,7 @@ import { useCountUp } from "../hooks/useCountUp";
 import ProgressBar from "../components/ui/ProgressBar";
 import Modal from "../components/ui/Modal";
 import Label from "../components/ui/Label";
-import { NET_WORTH_HISTORY } from "../data/initial";
+
 
 function useIsMobile() {
   const [m, setM] = useState(window.innerWidth < 768);
@@ -15,7 +15,7 @@ function useIsMobile() {
 
 
 
-export default function NetWorthScreen({ assets, setAssets, liabilities, setLiabilities, user, C }) {
+export default function NetWorthScreen({ assets, setAssets, liabilities, setLiabilities, user, C, snapshots = [], saveNetworthSnapshot }) {
   const isMobile = useIsMobile();
   const [editAsset, setEditAsset] = useState(null);
   const [editLiability, setEditLiability] = useState(null);
@@ -29,6 +29,25 @@ export default function NetWorthScreen({ assets, setAssets, liabilities, setLiab
   const totalAssets = assets.reduce((s, a) => s + a.value, 0);
   const totalLiabs = liabilities.reduce((s, l) => s + l.balance, 0);
   const netWorth = totalAssets - totalLiabs;
+
+  // Save snapshot whenever net worth changes
+  useEffect(() => {
+    if (saveNetworthSnapshot && (assets.length > 0 || liabilities.length > 0)) {
+      saveNetworthSnapshot(netWorth);
+    }
+  }, [netWorth]);
+
+  // Build chart data from real snapshots
+  const chartData = snapshots.map(s => ({
+    month: s.month.slice(0, 7), // "2026-03"
+    value: s.net_worth,
+    label: new Date(s.month + "-01").toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
+  }));
+
+  // If only 1 snapshot, duplicate it so the chart renders a line
+  const displayData = chartData.length === 1
+    ? [{ ...chartData[0], label: "Start" }, { ...chartData[0], label: chartData[0].label }]
+    : chartData;
 
   const nwNum = useCountUp(Math.abs(netWorth), 800, 200, [netWorth]);
 
@@ -60,20 +79,29 @@ export default function NetWorthScreen({ assets, setAssets, liabilities, setLiab
       {/* Net worth chart */}
       <div style={{ background: C.surface, borderRadius: 20, padding: "24px", border: `1px solid ${C.border}`, animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "80ms" }}>
         <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 20 }}>Net Worth Over Time</h3>
-        <ResponsiveContainer width="100%" height={180}>
-          <AreaChart data={NET_WORTH_HISTORY}>
-            <defs>
-              <linearGradient id="nwGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={C.accent} stopOpacity={0.3} />
-                <stop offset="100%" stopColor={C.accent} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: C.textMuted, fontSize: 12 }} />
-            <YAxis hide />
-            <Tooltip contentStyle={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, color: C.text, fontSize: 13 }} />
-            <Area type="monotone" dataKey="value" stroke={C.accent} strokeWidth={2.5} fill="url(#nwGrad)" dot={false} />
-          </AreaChart>
-        </ResponsiveContainer>
+        {displayData.length === 0 ? (
+          <div style={{ textAlign: "center", color: C.textMuted, fontSize: 13, padding: "32px 0" }}>
+            Add assets or liabilities to start tracking your net worth over time.
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={displayData}>
+              <defs>
+                <linearGradient id="nwGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={netWorth >= 0 ? C.income : C.expense} stopOpacity={0.3} />
+                  <stop offset="100%" stopColor={netWorth >= 0 ? C.income : C.expense} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: C.textMuted, fontSize: 12 }} />
+              <YAxis hide />
+              <Tooltip
+                contentStyle={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, color: C.text, fontSize: 13 }}
+                formatter={(v) => [`${user.currency} ${v.toLocaleString()}`, "Net Worth"]}
+              />
+              <Area type="monotone" dataKey="value" stroke={netWorth >= 0 ? C.income : C.expense} strokeWidth={2.5} fill="url(#nwGrad)" dot={displayData.length <= 6} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* Assets */}

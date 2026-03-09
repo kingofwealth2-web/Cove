@@ -221,6 +221,32 @@ export function useSupabaseData(session) {
   };
 
 
+
+  const [snapshots, setSnapshots] = useState([]);
+
+
+  // ── Save net worth snapshot (once per month) ─────────────────────────────
+  const saveNetworthSnapshot = async (netWorth) => {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const existing = snapshots.find(s => s.month === month);
+    if (existing) {
+      // Update if value changed
+      if (existing.net_worth !== netWorth) {
+        const { data } = await supabase.from("networth_snapshots")
+          .update({ net_worth: netWorth })
+          .eq("id", existing.id)
+          .select().single();
+        if (data) setSnapshots(ss => ss.map(s => s.id === data.id ? data : s));
+      }
+      return;
+    }
+    const { data } = await supabase.from("networth_snapshots")
+      .insert({ user_id: uid, month, net_worth: netWorth })
+      .select().single();
+    if (data) setSnapshots(ss => [...ss, data]);
+  };
+
   // ── Delete all user data ─────────────────────────────────────────────────
   const deleteAllData = async () => {
     await Promise.all([
@@ -246,6 +272,6 @@ export function useSupabaseData(session) {
     transactions, categories, bills, goals, debts, assets, liabilities, notifications,
     addTransaction, deleteTransaction, updateTransaction,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
-    saveOnboarding, saveSettings, deleteAllData,
+    saveOnboarding, saveSettings, deleteAllData, snapshots, saveNetworthSnapshot,
   };
 }

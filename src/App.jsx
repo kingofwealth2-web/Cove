@@ -56,7 +56,7 @@ export default function App() {
     transactions, categories, bills, goals, debts, assets, liabilities, notifications,
     addTransaction, deleteTransaction, updateTransaction,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
-    saveOnboarding, saveSettings, deleteAllData,
+    saveOnboarding, saveSettings, deleteAllData, snapshots, saveNetworthSnapshot,
   } = useSupabaseData(session);
 
   const base = theme === "dark" ? darkColors : lightColors;
@@ -166,7 +166,7 @@ export default function App() {
     bills:         <BillsScreen bills={bills} setBills={setBills} user={user} C={C} />,
     goals:         <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} />,
     debt:          <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} />,
-    networth:      <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} />,
+    networth:      <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} />,
     notifications: <NotificationsScreen notifications={notifications} setNotifications={() => {}} C={C} />,
     settings:      <SettingsScreen user={user} setUser={setUser} C={C} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} />,
   };
