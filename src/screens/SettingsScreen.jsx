@@ -10,11 +10,32 @@ function useIsMobile() {
 
 
 
-export default function SettingsScreen({ user, setUser, C, setTheme, theme, accentChoice, setAccentChoice, onSignOut }) {
+export default function SettingsScreen({ user, setUser, C, setTheme, theme, accentChoice, setAccentChoice, onSignOut, transactions, categories, onDeleteAllData }) {
   const isMobile = useIsMobile();
   const [notifToggles, setNotifToggles] = useState({ budgetWarning: true, overBudget: true, billReminder: true, streak: true, monthlyRecap: true, anomaly: false });
   const [method, setMethod] = useState("envelope");
   const [pinEnabled, setPinEnabled] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const exportCSV = () => {
+    const header = "Date,Type,Category,Amount,Note\n";
+    const rows = transactions.map(tx => {
+      const cat = categories.find(c => c.id === tx.categoryId);
+      return `${tx.date},${tx.type},${cat?.name || ""},${tx.amount},"${(tx.note || "").replace(/"/g, '""')}"`;
+    }).join("\n");
+    const blob = new Blob([header + rows], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "cove-transactions.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportJSON = () => {
+    const data = { transactions, categories, exportedAt: new Date().toISOString(), currency: user.currency };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "cove-data.json"; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const Toggle = ({ value, onChange, label }) => (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${C.border}` }}>
@@ -119,23 +140,31 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
 
       <Section title="Data">
         {[
-          { label: "Export as CSV", icon: "📥", action: () => alert("CSV export coming soon") },
-          { label: "Export as JSON", icon: "📤", action: () => alert("JSON export coming soon") },
-          { label: "Import CSV", icon: "📂", action: () => alert("CSV import coming soon") },
+          { label: "Export as CSV", icon: "📥", action: exportCSV },
+          { label: "Export as JSON", icon: "📤", action: exportJSON },
         ].map(item => (
           <button key={item.label} onClick={item.action} style={{
             display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0",
             background: "none", border: "none", borderBottom: `1px solid ${C.border}`,
-            cursor: "pointer", color: C.text, fontSize: 14, textAlign: "left",
-            transition: `color 150ms`,
+            cursor: "pointer", color: C.text, fontSize: 14, textAlign: "left", transition: `color 150ms`,
           }}
           onMouseEnter={e => e.currentTarget.style.color = C.accent}
           onMouseLeave={e => e.currentTarget.style.color = C.text}
           ><span>{item.icon}</span>{item.label}</button>
         ))}
-        <button style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0", background: "none", border: "none", cursor: "pointer", color: C.expense, fontSize: 14, textAlign: "left" }}>
-          <span>🗑</span>Delete All Data
-        </button>
+        {!confirmDelete ? (
+          <button onClick={() => setConfirmDelete(true)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0", background: "none", border: "none", cursor: "pointer", color: C.expense, fontSize: 14, textAlign: "left" }}>
+            <span>🗑</span>Delete All Data
+          </button>
+        ) : (
+          <div style={{ paddingTop: 12 }}>
+            <div style={{ fontSize: 13, color: C.text, marginBottom: 10 }}>Are you sure? This cannot be undone.</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setConfirmDelete(false)} style={{ flex: 1, padding: "10px", borderRadius: 10, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { onDeleteAllData(); setConfirmDelete(false); }} style={{ flex: 1, padding: "10px", borderRadius: 10, border: "none", background: C.expense, color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Delete Everything</button>
+            </div>
+          </div>
+        )}
       </Section>
 
       <Section title="Account">

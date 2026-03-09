@@ -220,11 +220,32 @@ export function useSupabaseData(session) {
     }));
   };
 
+
+  // ── Delete all user data ─────────────────────────────────────────────────
+  const deleteAllData = async () => {
+    await Promise.all([
+      supabase.from("transactions").delete().eq("user_id", uid),
+      supabase.from("categories").delete().eq("user_id", uid),
+      supabase.from("bills").delete().eq("user_id", uid),
+      supabase.from("goals").delete().eq("user_id", uid),
+      supabase.from("debts").delete().eq("user_id", uid),
+      supabase.from("assets").delete().eq("user_id", uid),
+      supabase.from("liabilities").delete().eq("user_id", uid),
+    ]);
+    setTransactionsState([]);
+    setCategoriesState([]);
+    setBillsState([]);
+    setGoalsState([]);
+    setDebtsState([]);
+    setAssetsState([]);
+    setLiabilitiesState([]);
+  };
+
   return {
     profile, loading,
     transactions, categories, bills, goals, debts, assets, liabilities, notifications,
     addTransaction, deleteTransaction, updateTransaction,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
-    saveOnboarding, saveSettings,
+    saveOnboarding, saveSettings, deleteAllData,
   };
 }
