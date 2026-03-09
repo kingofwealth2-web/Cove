@@ -59,7 +59,7 @@ export default function App() {
   } = useSupabaseData(session);
 
   const base = theme === "dark" ? darkColors : lightColors;
-  const C = { ...base, accent: accentChoice.value, accentSoft: accentChoice.soft, accentGlow: accentChoice.glow };
+  const C = { ...base, accent: accentChoice.value, accentSoft: accentChoice.soft, accentGlow: accentChoice.glow, accentDark: accentChoice.dark };
 
   useEffect(() => {
     if (profile) {

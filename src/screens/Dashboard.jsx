@@ -189,7 +189,7 @@ export default function Dashboard({ transactions, categories, user, C, onAdd, on
       </div>
 
       <div style={{
-        background: `linear-gradient(135deg, ${C.accent} 0%, #7C3AED 60%, #4F46E5 100%)`,
+        background: `linear-gradient(135deg, ${C.accent} 0%, ${C.accentDark || C.accent} 100%)`,
         borderRadius: 24, padding: isMobile ? "28px 24px" : "36px 40px",
         boxShadow: `0 20px 60px ${C.accentGlow}, 0 8px 24px rgba(0,0,0,0.4)`,
         position: "relative", overflow: "hidden",

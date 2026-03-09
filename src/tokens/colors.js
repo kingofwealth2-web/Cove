@@ -27,12 +27,12 @@ export const lightColors = {
 };
 
 export const accentOptions = [
-  { name: "Indigo", value: "#6366F1", glow: "rgba(99,102,241,0.35)", soft: "rgba(99,102,241,0.12)" },
-  { name: "Violet", value: "#BF5AF2", glow: "rgba(191,90,242,0.35)", soft: "rgba(191,90,242,0.12)" },
-  { name: "Rose", value: "#FF375F", glow: "rgba(255,55,95,0.35)", soft: "rgba(255,55,95,0.12)" },
-  { name: "Amber", value: "#FF9F0A", glow: "rgba(255,159,10,0.35)", soft: "rgba(255,159,10,0.12)" },
-  { name: "Emerald", value: "#34C759", glow: "rgba(52,199,89,0.35)", soft: "rgba(52,199,89,0.12)" },
-  { name: "Cyan", value: "#5AC8FA", glow: "rgba(90,200,250,0.35)", soft: "rgba(90,200,250,0.12)" },
-  { name: "Orange", value: "#FF6B35", glow: "rgba(255,107,53,0.35)", soft: "rgba(255,107,53,0.12)" },
-  { name: "Teal", value: "#00C7BE", glow: "rgba(0,199,190,0.35)", soft: "rgba(0,199,190,0.12)" },
+  { name: "Indigo",   value: "#6366F1", dark: "#3730A3", glow: "rgba(99,102,241,0.35)",  soft: "rgba(99,102,241,0.12)"  },
+  { name: "Violet",   value: "#BF5AF2", dark: "#7C3AED", glow: "rgba(191,90,242,0.35)",  soft: "rgba(191,90,242,0.12)"  },
+  { name: "Rose",     value: "#FF375F", dark: "#BE123C", glow: "rgba(255,55,95,0.35)",   soft: "rgba(255,55,95,0.12)"   },
+  { name: "Amber",    value: "#FF9F0A", dark: "#B45309", glow: "rgba(255,159,10,0.35)",  soft: "rgba(255,159,10,0.12)"  },
+  { name: "Emerald",  value: "#34C759", dark: "#166534", glow: "rgba(52,199,89,0.35)",   soft: "rgba(52,199,89,0.12)"   },
+  { name: "Cyan",     value: "#5AC8FA", dark: "#0E7490", glow: "rgba(90,200,250,0.35)",  soft: "rgba(90,200,250,0.12)"  },
+  { name: "Orange",   value: "#FF6B35", dark: "#C2410C", glow: "rgba(255,107,53,0.35)",  soft: "rgba(255,107,53,0.12)"  },
+  { name: "Teal",     value: "#00C7BE", dark: "#0F766E", glow: "rgba(0,199,190,0.35)",   soft: "rgba(0,199,190,0.12)"   },
 ];

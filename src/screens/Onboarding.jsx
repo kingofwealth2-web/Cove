@@ -12,7 +12,7 @@ export default function Onboarding({ onComplete }) {
   const [theme, setTheme] = useState("dark");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const C = theme === "dark" ? darkColors : lightColors;
-  const accentC = { ...C, accent: accent.value, accentSoft: accent.soft, accentGlow: accent.glow };
+  const accentC = { ...C, accent: accent.value, accentSoft: accent.soft, accentGlow: accent.glow, accentDark: accent.dark };
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768);
