@@ -76,7 +76,7 @@ function UserCard({ user, C, onSignOut, springs }) {
   );
 }
 
-export default function Sidebar({ active, onAdd, user, C, onSignOut, mobileOpen, onMobileClose, notifications }) {
+export default function Sidebar({ active, setActive, onAdd, user, C, notifications, mobileOpen, onMobileClose, onSignOut }) {
   const unread = notifications.filter(n => !n.read).length;
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [collapsed, setCollapsed] = useState(false);
