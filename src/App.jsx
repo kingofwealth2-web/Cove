@@ -1,12 +1,9 @@
 import { useState, useEffect } from "react";
 import { darkColors, lightColors, accentOptions } from "./tokens/colors";
 import { springs } from "./tokens/springs";
-import {
-  INIT_CATEGORIES, INIT_TRANSACTIONS, INIT_BILLS,
-  INIT_GOALS, INIT_DEBTS, INIT_ASSETS, INIT_LIABILITIES, INIT_NOTIFICATIONS,
-} from "./data/initial";
-
 import { supabase } from "./lib/supabase";
+import { useSupabaseData } from "./hooks/useSupabaseData";
+
 import GlobalStyles from "./components/ui/GlobalStyles";
 import Toast from "./components/ui/Toast";
 import Sidebar from "./components/layout/Sidebar";
@@ -27,20 +24,10 @@ import SettingsScreen from "./screens/SettingsScreen";
 export default function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [onboarded, setOnboarded] = useState(false);
-  const [user, setUser] = useState({ name: "User", income: 0, currency: "GHS" });
   const [theme, setTheme] = useState("dark");
   const [accentChoice, setAccentChoice] = useState(accentOptions[0]);
   const [active, setActive] = useState("home");
   const [showAdd, setShowAdd] = useState(false);
-  const [transactions, setTransactions] = useState(INIT_TRANSACTIONS);
-  const [categories, setCategories] = useState(INIT_CATEGORIES);
-  const [bills, setBills] = useState(INIT_BILLS);
-  const [goals, setGoals] = useState(INIT_GOALS);
-  const [debts, setDebts] = useState(INIT_DEBTS);
-  const [assets, setAssets] = useState(INIT_ASSETS);
-  const [liabilities, setLiabilities] = useState(INIT_LIABILITIES);
-  const [notifications, setNotifications] = useState(INIT_NOTIFICATIONS);
   const [toast, setToast] = useState(null);
   const [animKey, setAnimKey] = useState(0);
 
@@ -55,39 +42,70 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const {
+    profile, loading,
+    transactions, categories, bills, goals, debts, assets, liabilities, notifications,
+    addTransaction, setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
+    saveOnboarding,
+  } = useSupabaseData(session);
+
   const base = theme === "dark" ? darkColors : lightColors;
   const C = { ...base, accent: accentChoice.value, accentSoft: accentChoice.soft, accentGlow: accentChoice.glow };
+
+  // Sync theme/accent from profile
+  useEffect(() => {
+    if (profile) {
+      setTheme(profile.theme || "dark");
+      const found = accentOptions.find(a => a.value === profile.accent_color);
+      if (found) setAccentChoice(found);
+    }
+  }, [profile]);
 
   const navigate = (screen) => {
     setActive(screen);
     setAnimKey(k => k + 1);
   };
 
-  const handleAddTransaction = (tx) => {
-    setTransactions(ts => [tx, ...ts]);
+  const handleAddTransaction = async (tx) => {
+    await addTransaction(tx);
     setToast("Transaction saved ✓");
   };
 
-  const handleOnboardingComplete = ({ name, income, currency, accent, theme: t }) => {
-    setUser({ name, income, currency });
-    setAccentChoice(accent);
+  const handleOnboardingComplete = async ({ name, income, currency, accent, theme: t }) => {
     setTheme(t);
-    setOnboarded(true);
+    setAccentChoice(accent);
+    await saveOnboarding({ name, income, currency, accent, theme: t });
   };
 
-  if (authLoading) {
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+  };
+
+  const user = profile
+    ? { name: profile.name, income: profile.monthly_income, currency: profile.currency }
+    : { name: "User", income: 0, currency: "GHS" };
+
+  const setUser = async (updater) => {
+    const next = typeof updater === "function" ? updater(user) : updater;
+    await supabase.from("profiles").update({
+      name: next.name, currency: next.currency, monthly_income: next.income,
+    }).eq("id", session.user.id);
+  };
+
+  // ── Loading spinner ──────────────────────────────────────────────────────
+  if (authLoading || (session && loading)) {
     return (
       <div style={{ minHeight: "100vh", background: "#0A0A0F", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         <div style={{ width: 32, height: 32, borderRadius: "50%", border: "3px solid rgba(99,102,241,0.3)", borderTopColor: "#6366F1", animation: "spin 700ms linear infinite" }} />
       </div>
     );
   }
 
-  if (!session) {
-    return <AuthScreen />;
-  }
+  if (!session) return <AuthScreen />;
 
-  if (!onboarded) {
+  if (!profile) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
@@ -99,8 +117,8 @@ export default function App() {
     goals: <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} />,
     debt: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} />,
     networth: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} />,
-    notifications: <NotificationsScreen notifications={notifications} setNotifications={setNotifications} C={C} />,
-    settings: <SettingsScreen user={user} setUser={setUser} C={C} setTheme={setTheme} theme={theme} accentChoice={accentChoice} setAccentChoice={setAccentChoice} />,
+    notifications: <NotificationsScreen notifications={notifications} setNotifications={() => {}} C={C} />,
+    settings: <SettingsScreen user={user} setUser={setUser} C={C} setTheme={setTheme} theme={theme} accentChoice={accentChoice} setAccentChoice={setAccentChoice} onSignOut={handleSignOut} />,
   };
 
   return (

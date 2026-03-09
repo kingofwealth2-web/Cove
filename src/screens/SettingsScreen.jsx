@@ -3,7 +3,7 @@ import { springs } from "../tokens/springs";
 import { accentOptions } from "../tokens/colors";
 
 
-export default function SettingsScreen({ user, setUser, C, setTheme, theme, accentChoice, setAccentChoice }) {
+export default function SettingsScreen({ user, setUser, C, setTheme, theme, accentChoice, setAccentChoice, onSignOut }) {
   const [notifToggles, setNotifToggles] = useState({ budgetWarning: true, overBudget: true, billReminder: true, streak: true, monthlyRecap: true, anomaly: false });
   const [method, setMethod] = useState("envelope");
   const [pinEnabled, setPinEnabled] = useState(false);
@@ -127,6 +127,15 @@ export default function SettingsScreen({ user, setUser, C, setTheme, theme, acce
         ))}
         <button style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0", background: "none", border: "none", cursor: "pointer", color: C.expense, fontSize: 14, textAlign: "left" }}>
           <span>🗑</span>Delete All Data
+        </button>
+      </Section>
+
+      <Section title="Account">
+        <button onClick={onSignOut} style={{
+          display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0",
+          background: "none", border: "none", cursor: "pointer", color: C.expense, fontSize: 14, textAlign: "left",
+        }}>
+          <span>🚪</span>Sign Out
         </button>
       </Section>
 
