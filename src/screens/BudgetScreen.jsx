@@ -11,7 +11,7 @@ function useIsMobile() {
   return m;
 }
 
-export default function BudgetScreen({ transactions, categories, setCategories, user, C }) {
+export default function BudgetScreen({ transactions, categories, setCategories, user, C, onUpdateTransaction, onDeleteTransaction }) {
   const isMobile = useIsMobile();
   const [monthOffset, setMonthOffset] = useState(0);
   const [expanded, setExpanded] = useState(null);
@@ -20,6 +20,7 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
   const [newCat, setNewCat] = useState({ name: "", icon: "📦", color: "#6366F1", budget: "" });
   const [editingBudget, setEditingBudget] = useState({});
   const [editCat, setEditCat] = useState(null);
+  const [editTx, setEditTx] = useState(null);
 
   const isEnvelope = method === "envelope";
 
@@ -222,12 +223,25 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
                   {catTx.length === 0 ? (
                     <div style={{ fontSize: 13, color: C.textMuted, padding: "4px 0" }}>No transactions this month</div>
                   ) : catTx.map((tx, j) => (
-                    <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: j < catTx.length - 1 ? `1px solid ${C.border}` : "none" }}>
-                      <div>
+                    <div key={tx.id} style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "8px 0", borderBottom: j < catTx.length - 1 ? `1px solid ${C.border}` : "none",
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, color: C.text }}>{tx.note || cat.name}</div>
                         <div style={{ fontSize: 11, color: C.textMuted }}>{new Date(tx.date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</div>
                       </div>
-                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: C.text }}>-{user.currency} {tx.amount.toLocaleString()}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: C.text }}>-{user.currency} {tx.amount.toLocaleString()}</div>
+                        <button onClick={() => setEditTx({ ...tx })} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.textMuted, padding: "2px 4px", borderRadius: 6 }}
+                          onMouseEnter={e => e.currentTarget.style.color = C.accent}
+                          onMouseLeave={e => e.currentTarget.style.color = C.textMuted}
+                        >✏️</button>
+                        <button onClick={() => onDeleteTransaction && onDeleteTransaction(tx.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.textMuted, padding: "2px 4px", borderRadius: 6 }}
+                          onMouseEnter={e => e.currentTarget.style.color = C.expense}
+                          onMouseLeave={e => e.currentTarget.style.color = C.textMuted}
+                        >🗑</button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -301,6 +315,69 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
           </div>
         </Modal>
       )}
+
+      {editTx && (
+        <Modal onClose={() => setEditTx(null)} C={C} width={440}>
+          <div style={{ padding: "24px 28px" }}>
+            <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: C.text, marginBottom: 20 }}>Edit Transaction</h3>
+            <EditTxForm tx={editTx} categories={categories} user={user} C={C}
+              onSave={(id, updates) => { onUpdateTransaction && onUpdateTransaction(id, updates); setEditTx(null); }}
+              onClose={() => setEditTx(null)}
+            />
+          </div>
+        </Modal>
+      )}
     </div>
+  );
+}
+
+function EditTxForm({ tx, categories, user, C, onSave, onClose }) {
+  const [type, setType] = useState(tx.type);
+  const [amount, setAmount] = useState(String(tx.amount));
+  const [catId, setCatId] = useState(tx.categoryId);
+  const [note, setNote] = useState(tx.note || "");
+  const [date, setDate] = useState(tx.date);
+  const filteredCats = categories.filter(c => type === "income" ? c.is_income : !c.is_income);
+
+  return (
+    <>
+      <div style={{ display: "flex", background: C.surfaceAlt, borderRadius: 12, padding: 4, gap: 4, marginBottom: 16 }}>
+        {["expense","income"].map(t => (
+          <button key={t} onClick={() => { setType(t); setCatId(null); }} style={{
+            flex: 1, padding: "9px", borderRadius: 10, border: "none", cursor: "pointer",
+            background: type === t ? (t === "income" ? C.income : C.expense) : "transparent",
+            color: type === t ? "white" : C.textSub, fontSize: 13, fontWeight: 600, textTransform: "capitalize",
+          }}>{t}</button>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, background: C.surfaceAlt, borderRadius: 14, padding: "12px 16px", border: `1px solid ${C.border}`, marginBottom: 12 }}>
+        <span style={{ fontSize: 15, fontWeight: 600, color: C.textMuted }}>{user.currency}</span>
+        <input autoFocus type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)}
+          style={{ flex: 1, background: "none", border: "none", outline: "none", fontSize: 28, fontFamily: "'DM Serif Display', serif", color: C.text, letterSpacing: "-1px" }} />
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+        {filteredCats.map(cat => (
+          <button key={cat.id} onClick={() => setCatId(cat.id)} style={{
+            padding: "7px 13px", borderRadius: 99,
+            border: `1px solid ${catId === cat.id ? cat.color + "60" : "transparent"}`,
+            background: catId === cat.id ? cat.color + "22" : C.surfaceAlt,
+            color: catId === cat.id ? cat.color : C.textSub,
+            fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+          }}><span>{cat.icon}</span>{cat.name}</button>
+        ))}
+      </div>
+      <input value={note} onChange={e => setNote(e.target.value)} placeholder="Note..."
+        style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 14px", fontSize: 14, color: C.text, outline: "none", width: "100%", marginBottom: 12 }} />
+      <input type="date" value={date} onChange={e => setDate(e.target.value)}
+        style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 14px", fontSize: 14, color: C.text, outline: "none", width: "100%", colorScheme: "dark", marginBottom: 20 }} />
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={onClose} style={{ flex: 1, padding: "13px", borderRadius: 12, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+        <button onClick={() => onSave(tx.id, { type, amount: parseFloat(amount), categoryId: catId, note, date, isRecurring: tx.isRecurring })} style={{
+          flex: 2, padding: "13px", borderRadius: 12, border: "none",
+          background: C.accent, color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer",
+          boxShadow: `0 6px 20px ${C.accentGlow}`,
+        }}>Save Changes</button>
+      </div>
+    </>
   );
 }

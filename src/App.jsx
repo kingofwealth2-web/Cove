@@ -163,7 +163,7 @@ export default function App() {
 
   const screens = {
     home:          <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} />,
-    budget:        <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} />,
+    budget:        <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} />,
     trends:        <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} />,
     bills:         <BillsScreen bills={bills} setBills={setBills} user={user} C={C} />,
     goals:         <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} />,
