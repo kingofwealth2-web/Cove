@@ -54,7 +54,7 @@ export default function App() {
   const {
     profile, loading,
     transactions, categories, bills, goals, debts, assets, liabilities, notifications,
-    addTransaction, setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
+    addTransaction, deleteTransaction, updateTransaction, setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
     saveOnboarding,
   } = useSupabaseData(session);
 
@@ -114,7 +114,7 @@ export default function App() {
   if (!profile) return <Onboarding onComplete={handleOnboardingComplete} />;
 
   const screens = {
-    home: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} />,
+    home: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} />,
     budget: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} />,
     trends: <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} />,
     bills: <BillsScreen bills={bills} setBills={setBills} user={user} C={C} />,

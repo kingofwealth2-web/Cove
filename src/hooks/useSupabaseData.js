@@ -66,7 +66,7 @@ export function useSupabaseData(session) {
   const mapGoal = g => ({ id: g.id, name: g.name, icon: g.icon, target: g.target_amount, current: g.current_amount, deadline: g.deadline, color: g.color, paused: g.paused });
   const mapDebt = d => ({ id: d.id, lender: d.lender, originalAmount: d.original_amount, currentBalance: d.current_balance, interestRate: d.interest_rate, minimumPayment: d.minimum_payment, dueDay: d.due_day, type: d.type });
 
-  // ── Onboarding: save profile + seed data ────────────────────────────────
+  // ── Onboarding: save profile + seed default categories only ────────────────
   const saveOnboarding = async ({ name, income, currency, accent, theme }) => {
     // Save profile
     await supabase.from("profiles").upsert({
@@ -76,53 +76,23 @@ export function useSupabaseData(session) {
       monthly_income: income,
     });
 
-    // Seed categories
-    const cats = INIT_CATEGORIES.map((c, i) => ({
+    // Seed default categories (no transactions/bills/goals — user starts fresh)
+    const defaultCategories = [
+      { name: "Food", icon: "🍔", color: "#FF9F0A", budget: Math.round(income * 0.20), group: "Living", rollover: false },
+      { name: "Transport", icon: "🚗", color: "#5AC8FA", budget: Math.round(income * 0.10), group: "Living", rollover: false },
+      { name: "Rent", icon: "🏠", color: "#BF5AF2", budget: Math.round(income * 0.30), group: "Living", rollover: false },
+      { name: "Utilities", icon: "💡", color: "#FF6B35", budget: Math.round(income * 0.06), group: "Living", rollover: true },
+      { name: "Health", icon: "❤️", color: "#FF375F", budget: Math.round(income * 0.07), group: "Wellness", rollover: false },
+      { name: "Fun", icon: "🎉", color: "#6366F1", budget: Math.round(income * 0.08), group: "Lifestyle", rollover: false },
+      { name: "Savings", icon: "💰", color: "#34C759", budget: Math.round(income * 0.12), group: "Goals", rollover: false },
+      { name: "Education", icon: "📚", color: "#00C7BE", budget: Math.round(income * 0.05), group: "Growth", rollover: false },
+    ];
+
+    const cats = defaultCategories.map((c, i) => ({
       user_id: uid, name: c.name, icon: c.icon, color: c.color,
       budget_amount: c.budget, group_name: c.group, rollover: c.rollover, sort_order: i,
     }));
-    const { data: insertedCats } = await supabase.from("categories").insert(cats).select();
-
-    // Build categoryId map old→new
-    const catMap = {};
-    INIT_CATEGORIES.forEach((c, i) => { catMap[c.id] = insertedCats[i].id; });
-
-    // Seed transactions
-    const txs = INIT_TRANSACTIONS.map(t => ({
-      user_id: uid, category_id: t.categoryId ? catMap[t.categoryId] : null,
-      amount: t.amount, type: t.type, note: t.note, date: t.date, is_recurring: t.isRecurring,
-    }));
-    await supabase.from("transactions").insert(txs);
-
-    // Seed bills
-    const bls = INIT_BILLS.map(b => ({
-      user_id: uid, name: b.name, amount: b.amount, due_day: b.dueDay,
-      category_id: catMap[b.categoryId] || null, is_subscription: b.isSubscription, paid: b.paid,
-    }));
-    await supabase.from("bills").insert(bls);
-
-    // Seed goals
-    const gls = INIT_GOALS.map(g => ({
-      user_id: uid, name: g.name, icon: g.icon, target_amount: g.target,
-      current_amount: g.current, deadline: g.deadline, color: g.color, paused: g.paused,
-    }));
-    await supabase.from("goals").insert(gls);
-
-    // Seed debts
-    const dbs = INIT_DEBTS.map(d => ({
-      user_id: uid, lender: d.lender, original_amount: d.originalAmount,
-      current_balance: d.currentBalance, interest_rate: d.interestRate,
-      minimum_payment: d.minimumPayment, due_day: d.dueDay, type: d.type,
-    }));
-    await supabase.from("debts").insert(dbs);
-
-    // Seed assets
-    const ast = INIT_ASSETS.map(a => ({ user_id: uid, name: a.name, type: a.type, value: a.value }));
-    await supabase.from("assets").insert(ast);
-
-    // Seed liabilities
-    const lib = INIT_LIABILITIES.map(l => ({ user_id: uid, name: l.name, type: l.type, balance: l.balance }));
-    await supabase.from("liabilities").insert(lib);
+    await supabase.from("categories").insert(cats);
 
     await loadAll();
   };
@@ -134,6 +104,21 @@ export function useSupabaseData(session) {
       amount: tx.amount, type: tx.type, note: tx.note, date: tx.date, is_recurring: tx.isRecurring,
     }).select().single();
     if (data) setTransactionsState(ts => [mapTx(data), ...ts]);
+  };
+
+  const deleteTransaction = async (id) => {
+    setTransactionsState(ts => ts.filter(t => t.id !== id));
+    await supabase.from("transactions").delete().eq("id", id).eq("user_id", uid);
+  };
+
+  const updateTransaction = async (id, updates) => {
+    const mapped = {
+      category_id: updates.categoryId || null,
+      amount: updates.amount, type: updates.type,
+      note: updates.note, date: updates.date, is_recurring: updates.isRecurring,
+    };
+    setTransactionsState(ts => ts.map(t => t.id === id ? { ...t, ...updates } : t));
+    await supabase.from("transactions").update(mapped).eq("id", id).eq("user_id", uid);
   };
 
   // ── Categories ───────────────────────────────────────────────────────────
@@ -195,7 +180,7 @@ export function useSupabaseData(session) {
   return {
     profile, loading,
     transactions, categories, bills, goals, debts, assets, liabilities, notifications,
-    addTransaction, setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
+    addTransaction, deleteTransaction, updateTransaction, setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
     saveOnboarding,
   };
 }
