@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { darkColors, lightColors, accentOptions } from "./tokens/colors";
 import { springs } from "./tokens/springs";
 import {
@@ -6,10 +6,12 @@ import {
   INIT_GOALS, INIT_DEBTS, INIT_ASSETS, INIT_LIABILITIES, INIT_NOTIFICATIONS,
 } from "./data/initial";
 
+import { supabase } from "./lib/supabase";
 import GlobalStyles from "./components/ui/GlobalStyles";
 import Toast from "./components/ui/Toast";
 import Sidebar from "./components/layout/Sidebar";
 
+import AuthScreen from "./screens/AuthScreen";
 import Onboarding from "./screens/Onboarding";
 import AddTransactionPanel from "./screens/AddTransactionPanel";
 import Dashboard from "./screens/Dashboard";
@@ -23,8 +25,10 @@ import NotificationsScreen from "./screens/NotificationsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [onboarded, setOnboarded] = useState(false);
-  const [user, setUser] = useState({ name: "Kwame", income: 4200, currency: "GHS" });
+  const [user, setUser] = useState({ name: "User", income: 0, currency: "GHS" });
   const [theme, setTheme] = useState("dark");
   const [accentChoice, setAccentChoice] = useState(accentOptions[0]);
   const [active, setActive] = useState("home");
@@ -39,6 +43,17 @@ export default function App() {
   const [notifications, setNotifications] = useState(INIT_NOTIFICATIONS);
   const [toast, setToast] = useState(null);
   const [animKey, setAnimKey] = useState(0);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const base = theme === "dark" ? darkColors : lightColors;
   const C = { ...base, accent: accentChoice.value, accentSoft: accentChoice.soft, accentGlow: accentChoice.glow };
@@ -59,6 +74,18 @@ export default function App() {
     setTheme(t);
     setOnboarded(true);
   };
+
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0A0A0F", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", border: "3px solid rgba(99,102,241,0.3)", borderTopColor: "#6366F1", animation: "spin 700ms linear infinite" }} />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <AuthScreen />;
+  }
 
   if (!onboarded) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
