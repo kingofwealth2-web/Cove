@@ -88,6 +88,7 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
       transition: `width 280ms ${springs.snap}, transform 350ms ${springs.bounce}`,
       boxShadow: isMobile && mobileOpen ? "8px 0 40px rgba(0,0,0,0.5)" : "none",
       overflow: "hidden",
+      overflowY: "auto",
     }}>
 
       {/* Header */}
@@ -119,7 +120,7 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
+      <nav style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
         {NAV.map((item, i) => {
           const isActive = active === item.id;
           return (
@@ -147,8 +148,8 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
         })}
       </nav>
 
-      {/* Add Transaction */}
-      <div style={{ padding: "12px 8px 10px" }}>
+      {/* Bottom: Add Transaction + User + Collapse */}
+      <div style={{ marginTop: "auto", padding: "12px 8px 0", display: "flex", flexDirection: "column", gap: 6 }}>
         <button onClick={() => { onAdd(); if (isMobile) onMobileClose(); }} style={{
           width: "100%", padding: collapsed ? "12px 0" : "12px", background: C.accent, color: "white",
           border: "none", borderRadius: 14, cursor: "pointer", fontSize: collapsed ? 20 : 14, fontWeight: 700,
@@ -158,10 +159,6 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
         onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.1)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
         onMouseLeave={e => { e.currentTarget.style.filter = ""; e.currentTarget.style.transform = ""; }}
         >{collapsed ? "+" : "+ Add Transaction"}</button>
-      </div>
-
-      {/* User + collapse toggle */}
-      <div style={{ margin: "8px 8px 0", display: "flex", flexDirection: "column", gap: 6 }}>
         {!collapsed && (
           <UserCard user={user} C={C} onSignOut={onSignOut} springs={springs} />
         )}
