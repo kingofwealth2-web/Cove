@@ -38,7 +38,7 @@ function DashCatCard({ cat, i, user, C }) {
   );
 }
 
-function TxRow({ tx, i, isLast, categories, user, C, formatDate, onDelete, onEdit }) {
+function TxRow({ tx, i, isLast, categories, user, C, formatDate, onDelete, onEdit, selectMode, selected, onToggleSelect }) {
   const cat = categories.find(c => c.id === tx.categoryId);
   const [hov, setHov] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -48,13 +48,22 @@ function TxRow({ tx, i, isLast, categories, user, C, formatDate, onDelete, onEdi
       <div
         onMouseEnter={() => setHov(true)}
         onMouseLeave={() => setHov(false)}
-        onClick={() => setShowActions(s => !s)}
+        onClick={() => selectMode ? onToggleSelect(tx.id) : setShowActions(s => !s)}
         style={{
           display: "flex", alignItems: "center", gap: 14, padding: "13px 18px",
-          background: hov ? C.surfaceHover : "transparent",
+          background: selected ? C.accentSoft : hov ? C.surfaceHover : "transparent",
           transition: `background 150ms`, cursor: "pointer",
           animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: `${180 + i * 35}ms`,
         }}>
+        {selectMode && (
+          <div style={{
+            width: 20, height: 20, borderRadius: 6, border: `2px solid ${selected ? C.accent : C.border}`,
+            background: selected ? C.accent : "transparent", flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            {selected && <span style={{ color: "white", fontSize: 12, fontWeight: 700 }}>✓</span>}
+          </div>
+        )}
         <div style={{ width: 36, height: 36, borderRadius: 10, background: (cat?.color || C.income) + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, flexShrink: 0 }}>
           {tx.type === "income" ? "💰" : cat?.icon || "💸"}
         </div>
@@ -76,7 +85,7 @@ function TxRow({ tx, i, isLast, categories, user, C, formatDate, onDelete, onEdi
           </div>
         </div>
       </div>
-      {showActions && (
+      {!selectMode && showActions && (
         <div style={{ display: "flex", gap: 8, padding: "6px 18px 10px", animation: `slideUp 150ms ${springs.snap}` }}>
           <button onClick={(e) => { e.stopPropagation(); onEdit(tx); setShowActions(false); }} style={{
             padding: "6px 16px", borderRadius: 8, border: `1px solid ${C.border}`,
@@ -191,11 +200,13 @@ function SafeToSpendInfo({ totalIncome, totalSpent, safeToSpend, currency, C, on
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export default function Dashboard({ transactions, categories, user, C, onAdd, onDeleteTransaction, onUpdateTransaction, selectedYear }) {
+export default function Dashboard({ transactions, categories, user, C, onAdd, onDeleteTransaction, onUpdateTransaction, onBulkDeleteTransactions, selectedYear }) {
   const isMobile = useIsMobile();
   const now = new Date();
   const [editTx, setEditTx] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   // Search & filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -365,17 +376,47 @@ export default function Dashboard({ transactions, categories, user, C, onAdd, on
             </div>
           </div>
 
-          {/* Transactions with search */}
+          {/* Transactions with search + bulk delete */}
           <div style={{ animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "160ms" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 10 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: C.text, letterSpacing: "-0.3px" }}>Transactions</h2>
-              <button onClick={() => { setShowSearch(s => !s); if (showSearch) { setSearchQuery(""); setFilterType("all"); setFilterCat("all"); }}} style={{
-                background: showingSearch ? C.accentSoft : C.surfaceAlt,
-                color: showingSearch ? C.accent : C.textSub,
-                border: "none", borderRadius: 10, padding: "7px 14px",
-                fontSize: 13, fontWeight: 600, cursor: "pointer",
-                transition: `all 200ms ${springs.snap}`,
-              }}>🔍 {showingSearch ? "Clear" : "Search"}</button>
+              <div style={{ display: "flex", gap: 8 }}>
+                {selectMode ? (
+                  <>
+                    {selectedIds.size > 0 && (
+                      <button onClick={async () => {
+                        await onBulkDeleteTransactions([...selectedIds]);
+                        setSelectedIds(new Set());
+                        setSelectMode(false);
+                      }} style={{
+                        padding: "7px 14px", borderRadius: 10, border: "none",
+                        background: C.expense, color: "white",
+                        fontSize: 13, fontWeight: 700, cursor: "pointer",
+                      }}>🗑 Delete {selectedIds.size}</button>
+                    )}
+                    <button onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }} style={{
+                      padding: "7px 14px", borderRadius: 10, border: `1px solid ${C.border}`,
+                      background: C.surfaceAlt, color: C.textSub,
+                      fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    }}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => { setShowSearch(s => !s); if (showSearch) { setSearchQuery(""); setFilterType("all"); setFilterCat("all"); }}} style={{
+                      background: showingSearch ? C.accentSoft : C.surfaceAlt,
+                      color: showingSearch ? C.accent : C.textSub,
+                      border: "none", borderRadius: 10, padding: "7px 14px",
+                      fontSize: 13, fontWeight: 600, cursor: "pointer",
+                      transition: `all 200ms ${springs.snap}`,
+                    }}>🔍 {showingSearch ? "Clear" : "Search"}</button>
+                    <button onClick={() => setSelectMode(true)} style={{
+                      background: C.surfaceAlt, color: C.textSub,
+                      border: "none", borderRadius: 10, padding: "7px 14px",
+                      fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    }}>Select</button>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Search / filter bar */}
@@ -430,6 +471,13 @@ export default function Dashboard({ transactions, categories, user, C, onAdd, on
                     <TxRow key={tx.id} tx={tx} i={i} isLast={i === displayTx.length - 1}
                       categories={categories} user={user} C={C} formatDate={formatDate}
                       onDelete={onDeleteTransaction} onEdit={setEditTx}
+                      selectMode={selectMode}
+                      selected={selectedIds.has(tx.id)}
+                      onToggleSelect={(id) => setSelectedIds(prev => {
+                        const next = new Set(prev);
+                        next.has(id) ? next.delete(id) : next.add(id);
+                        return next;
+                      })}
                     />
                   ))}
                   {!showingSearch && allSorted.length > 8 && (

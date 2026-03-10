@@ -172,6 +172,20 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
                   )}
                 </div>
                 <span style={{ color: C.textMuted, fontSize: 14, marginLeft: 4 }}>{isExpanded ? "▲" : "▼"}</span>
+                {!isReadOnly && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2, marginLeft: 2 }} onClick={e => e.stopPropagation()}>
+                    <button disabled={i === 0} onClick={() => {
+                      const cats = [...categories];
+                      const expIdx = cats.indexOf(cat);
+                      if (expIdx > 0) { [cats[expIdx - 1], cats[expIdx]] = [cats[expIdx], cats[expIdx - 1]]; setCategories(cats); }
+                    }} style={{ width: 20, height: 18, border: "none", background: "transparent", cursor: i === 0 ? "default" : "pointer", color: i === 0 ? C.border : C.textMuted, fontSize: 12, padding: 0, lineHeight: 1 }}>▲</button>
+                    <button disabled={i === expenseCategories.length - 1} onClick={() => {
+                      const cats = [...categories];
+                      const expIdx = cats.indexOf(cat);
+                      if (expIdx < cats.length - 1) { [cats[expIdx], cats[expIdx + 1]] = [cats[expIdx + 1], cats[expIdx]]; setCategories(cats); }
+                    }} style={{ width: 20, height: 18, border: "none", background: "transparent", cursor: i === expenseCategories.length - 1 ? "default" : "pointer", color: i === expenseCategories.length - 1 ? C.border : C.textMuted, fontSize: 12, padding: 0, lineHeight: 1 }}>▼</button>
+                  </div>
+                )}
               </div>
 
               {isExpanded && (

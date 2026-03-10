@@ -11,6 +11,7 @@ function useIsMobile() {
 export default function TrendsScreen({ transactions, categories, user, C, selectedYear, isReadOnly }) {
   const isMobile = useIsMobile();
   const [activeSlice, setActiveSlice] = useState(null);
+  const [view, setView] = useState("monthly"); // "monthly" | "weekly"
 
   const now = new Date();
   const year = selectedYear || now.getFullYear();
@@ -103,11 +104,47 @@ export default function TrendsScreen({ transactions, categories, user, C, select
     savingsRate < 0 && { icon: "🚨", text: `Spending exceeds income this month by ${user.currency} ${Math.abs(currentBarData.income - currentBarData.expenses).toLocaleString()}` },
   ].filter(Boolean).slice(0, 5);
 
+  // Weekly data — last 8 weeks
+  const weeklyData = useMemo(() => {
+    const weeks = [];
+    for (let w = 7; w >= 0; w--) {
+      const end = new Date(now);
+      end.setDate(now.getDate() - w * 7);
+      const start = new Date(end);
+      start.setDate(end.getDate() - 6);
+      const label = start.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      const txs = transactions.filter(t => {
+        const d = new Date(t.date);
+        return d >= start && d <= end;
+      });
+      weeks.push({
+        label,
+        income: txs.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0),
+        expenses: txs.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0),
+      });
+    }
+    return weeks;
+  }, [transactions]);
+
   const empty = transactions.length === 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-      <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px" }}>Trends</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px" }}>Trends</h1>
+        <div style={{ display: "flex", background: C.surfaceAlt, borderRadius: 10, padding: 3, gap: 3 }}>
+          {["monthly", "weekly"].map(v => (
+            <button key={v} onClick={() => setView(v)} style={{
+              padding: "7px 16px", borderRadius: 8, border: "none", cursor: "pointer",
+              background: view === v ? C.surface : "transparent",
+              color: view === v ? C.text : C.textMuted,
+              fontSize: 13, fontWeight: 600, textTransform: "capitalize",
+              boxShadow: view === v ? C.shadow : "none",
+              transition: `all 200ms ${springs.snap}`,
+            }}>{v}</button>
+          ))}
+        </div>
+      </div>
 
       {empty ? (
         <div style={{ background: C.surface, borderRadius: 20, padding: "48px 24px", border: `1px solid ${C.border}`, textAlign: "center" }}>
@@ -115,6 +152,48 @@ export default function TrendsScreen({ transactions, categories, user, C, select
           <div style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 8 }}>No data yet</div>
           <div style={{ fontSize: 14, color: C.textMuted }}>Add some transactions to see your trends.</div>
         </div>
+      ) : view === "weekly" ? (
+        <>
+          <div style={{ background: C.surface, borderRadius: 20, padding: "24px", border: `1px solid ${C.border}`, boxShadow: C.shadow, animation: `slideUp 300ms ${springs.bounce} both` }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 20 }}>Income vs Expenses — Last 8 Weeks</h3>
+            <ResponsiveContainer width="100%" height={isMobile ? 160 : 200}>
+              <BarChart data={weeklyData} barGap={4} barCategoryGap="30%">
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: C.textMuted, fontSize: 11 }} />
+                <YAxis hide />
+                <Tooltip contentStyle={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, color: C.text, fontSize: 13 }} cursor={{ fill: C.surfaceHover }} formatter={(v) => `${user.currency} ${v.toLocaleString()}`} />
+                <Bar dataKey="income" name="Income" fill={C.income} radius={[6, 6, 0, 0]} />
+                <Bar dataKey="expenses" name="Expenses" fill={C.expense} radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Week-over-week summary */}
+          <div style={{ background: C.surface, borderRadius: 20, padding: "24px", border: `1px solid ${C.border}`, boxShadow: C.shadow }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 16 }}>Week Summary</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {weeklyData.slice(-4).reverse().map((w, i) => {
+                const prev = weeklyData[weeklyData.length - 2 - i];
+                const change = prev?.expenses > 0 ? Math.round(((w.expenses - prev.expenses) / prev.expenses) * 100) : null;
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{i === 0 ? "This week" : i === 1 ? "Last week" : w.label}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>Spent {user.currency} {w.expenses.toLocaleString()}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, color: w.expenses > w.income && w.income > 0 ? C.expense : C.income }}>{user.currency} {w.income.toLocaleString()} in</div>
+                      {change !== null && (
+                        <div style={{ fontSize: 12, color: change > 0 ? C.expense : C.income, fontWeight: 600 }}>
+                          {change > 0 ? "↑" : "↓"} {Math.abs(change)}% vs prev week
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
       ) : (
         <>
           {/* Bar chart */}

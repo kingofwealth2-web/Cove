@@ -67,6 +67,7 @@ export default function App() {
     profile, loading,
     transactions, categories, bills, goals, debts, assets, liabilities,
     notifications, notifSettings, budgetMethod, pinHash, fxRates, biometricCredentialId,
+    templates, saveTemplates,
     addTransaction, deleteTransaction, updateTransaction,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
     saveOnboarding, saveSettings, saveFxRates, deleteAllData, snapshots, saveNetworthSnapshot,
@@ -160,6 +161,19 @@ export default function App() {
     });
   }, [profile?.id, transactions.length]);
 
+  // ── Auto net worth snapshot on first open each month ────────────────────
+  useEffect(() => {
+    if (!profile || (assets.length === 0 && liabilities.length === 0)) return;
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const alreadySnapped = snapshots.some(s => s.month === thisMonth);
+    if (!alreadySnapped) {
+      const totalAssets = assets.reduce((s, a) => s + a.value, 0);
+      const totalLiabs  = liabilities.reduce((s, l) => s + l.balance, 0);
+      saveNetworthSnapshot(totalAssets - totalLiabs);
+    }
+  }, [profile?.id, assets.length, liabilities.length]);
+
   const navigate = (screen) => {
     if (screen !== active) {
       animatedScreens.current.delete(screen);
@@ -218,6 +232,11 @@ export default function App() {
     await saveSettings({ biometricCredentialId: null });
   };
 
+  const handleBulkDeleteTransactions = async (ids) => {
+    for (const id of ids) await deleteTransaction(id);
+    setToast(`${ids.length} transaction${ids.length !== 1 ? "s" : ""} deleted`);
+  };
+
   const handleImportTransactions = async (txList) => {
     for (const tx of txList) {
       await addTransaction(tx);
@@ -255,7 +274,7 @@ export default function App() {
   const readOnlyProps = { selectedYear, isReadOnly };
 
   const SCREENS = [
-    { id: "home",          el: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} selectedYear={selectedYear} /> },
+    { id: "home",          el: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} onBulkDeleteTransactions={handleBulkDeleteTransactions} selectedYear={selectedYear} /> },
     { id: "budget",        el: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} {...readOnlyProps} /> },
     { id: "trends",        el: <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} {...readOnlyProps} /> },
     { id: "recurring",     el: <RecurringScreen transactions={transactions} categories={categories} user={user} C={C} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} {...readOnlyProps} /> },
@@ -319,7 +338,7 @@ export default function App() {
           </main>
         </div>
       </div>
-      {showAdd && !isReadOnly && <AddTransactionPanel onClose={() => setShowAdd(false)} onSave={handleAddTransaction} categories={categories} user={user} C={C} fxRates={fxRates} />}
+      {showAdd && !isReadOnly && <AddTransactionPanel onClose={() => setShowAdd(false)} onSave={handleAddTransaction} categories={categories} user={user} C={C} fxRates={fxRates} templates={templates} onSaveTemplates={saveTemplates} />}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>
   );

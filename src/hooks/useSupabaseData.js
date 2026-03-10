@@ -22,6 +22,7 @@ export function useSupabaseData(session) {
   const pinHash       = profile?.pin_hash || null;
   const fxRates       = profile?.fx_rates || {};
   const biometricCredentialId = profile?.biometric_credential_id || null;
+  const templates     = profile?.templates || [];
 
   const expenseCategories = categories.filter(c => !c.is_income);
 
@@ -79,7 +80,7 @@ export function useSupabaseData(session) {
   const mapCat  = c => ({ id: c.id, name: c.name, icon: c.icon, color: c.color, budget: c.budget_amount, group: c.group_name, rollover: c.rollover, is_income: c.is_income || false, alertAt: c.alert_at ?? 80 });
   const mapTx   = t => ({ id: t.id, categoryId: t.category_id, amount: t.amount, type: t.type, note: t.note, date: t.date, isRecurring: t.is_recurring, originalCurrency: t.original_currency || null, originalAmount: t.original_amount || null, exchangeRate: t.exchange_rate || 1 });
   const mapBill = b => ({ id: b.id, name: b.name, amount: b.amount, dueDay: b.due_day, categoryId: b.category_id, isSubscription: b.is_subscription, paid: b.paid });
-  const mapGoal = g => ({ id: g.id, name: g.name, icon: g.icon, target: g.target_amount, current: g.current_amount, deadline: g.deadline, color: g.color, paused: g.paused });
+  const mapGoal = g => ({ id: g.id, name: g.name, icon: g.icon, target: g.target_amount, current: g.current_amount, deadline: g.deadline, color: g.color, paused: g.paused, contributions: g.contributions || [] });
   const mapDebt = d => ({ id: d.id, lender: d.lender, originalAmount: d.original_amount, currentBalance: d.current_balance, interestRate: d.interest_rate, minimumPayment: d.minimum_payment, dueDay: d.due_day, type: d.type });
   const mapAsset = a => ({ id: a.id, name: a.name, type: a.type, value: a.value });
   const mapLiab  = l => ({ id: l.id, name: l.name, type: l.type, balance: l.balance });
@@ -297,7 +298,7 @@ export function useSupabaseData(session) {
     await syncTable("goals", prev, next, g => ({
       name: g.name, icon: g.icon, target_amount: g.target,
       current_amount: g.current || 0, deadline: g.deadline || null,
-      color: g.color, paused: g.paused || false,
+      color: g.color, paused: g.paused || false, contributions: g.contributions || [],
     }));
   };
 
@@ -345,6 +346,11 @@ export function useSupabaseData(session) {
     if (data) setSnapshots(ss => [...ss, data]);
   };
 
+  const saveTemplates = async (newTemplates) => {
+    await supabase.from("profiles").update({ templates: newTemplates }).eq("id", uid);
+    setProfile(p => ({ ...p, templates: newTemplates }));
+  };
+
   // ── Delete all user data ─────────────────────────────────────────────────
   const deleteAllData = async () => {
     await Promise.all([
@@ -369,6 +375,7 @@ export function useSupabaseData(session) {
     profile, loading,
     transactions, categories, bills, goals, debts, assets, liabilities,
     notifications, notifSettings, budgetMethod, pinHash, fxRates, biometricCredentialId,
+    templates, saveTemplates,
     addTransaction, deleteTransaction, updateTransaction,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
     saveOnboarding, saveSettings, saveFxRates, deleteAllData, snapshots, saveNetworthSnapshot,

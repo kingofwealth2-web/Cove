@@ -3,7 +3,7 @@ import { springs } from "../tokens/springs";
 import SlidePanel from "../components/ui/SlidePanel";
 import Label from "../components/ui/Label";
 
-export default function AddTransactionPanel({ onClose, onSave, categories, user, C, fxRates = {} }) {
+export default function AddTransactionPanel({ onClose, onSave, categories, user, C, fxRates = {}, templates = [], onSaveTemplates }) {
   const [type, setType] = useState("expense");
   const [amount, setAmount] = useState("");
   const [catId, setCatId] = useState(null);
@@ -14,6 +14,7 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
   const [selectedCurrency, setSelectedCurrency] = useState(user.currency);
   const [customRate, setCustomRate] = useState("");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768);
@@ -60,6 +61,32 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
 
   const canSave = parsedAmount > 0 && catId;
 
+  const applyTemplate = (tpl) => {
+    setType(tpl.type);
+    setCatId(tpl.categoryId);
+    setNote(tpl.note || "");
+    if (tpl.amount) setAmount(String(tpl.amount));
+    setShowTemplates(false);
+  };
+
+  const saveAsTemplate = () => {
+    if (!catId) return;
+    const cat = categories.find(c => c.id === catId);
+    const tpl = {
+      id: `tpl${Date.now()}`,
+      type, categoryId: catId,
+      note: note.trim(),
+      amount: parsedAmount > 0 ? parsedAmount : null,
+      icon: cat?.icon || "💸",
+      label: note.trim() || cat?.name || type,
+    };
+    onSaveTemplates && onSaveTemplates([...templates, tpl]);
+  };
+
+  const deleteTemplate = (id) => {
+    onSaveTemplates && onSaveTemplates(templates.filter(t => t.id !== id));
+  };
+
   const handleSave = () => {
     onSave({
       id: `t${Date.now()}`,
@@ -75,6 +102,39 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
 
   return (
     <SlidePanel onClose={onClose} C={C} title="Log Transaction">
+      {/* Templates bar */}
+      {templates.length > 0 && (
+        <div style={{ padding: "12px 28px", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: showTemplates ? 10 : 0 }}>
+            <button onClick={() => setShowTemplates(s => !s)} style={{
+              padding: "6px 14px", borderRadius: 99, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+              background: showTemplates ? C.accent : C.surfaceAlt,
+              color: showTemplates ? "white" : C.textSub,
+              transition: `all 150ms ${springs.snap}`,
+            }}>⚡ Templates ({templates.length})</button>
+          </div>
+          {showTemplates && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, animation: `slideUp 150ms ${springs.snap}` }}>
+              {templates.map(tpl => (
+                <div key={tpl.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <button onClick={() => applyTemplate(tpl)} style={{
+                    padding: "7px 12px", borderRadius: 99, border: `1px solid ${C.border}`,
+                    background: C.surface, color: C.text, cursor: "pointer", fontSize: 13,
+                    display: "flex", alignItems: "center", gap: 5,
+                  }}>
+                    <span>{tpl.icon}</span>{tpl.label}{tpl.amount ? ` · ${user.currency} ${tpl.amount}` : ""}
+                  </button>
+                  <button onClick={() => deleteTemplate(tpl.id)} style={{
+                    width: 20, height: 20, borderRadius: "50%", border: "none",
+                    background: C.expenseSoft, color: C.expense, cursor: "pointer", fontSize: 10,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {/* Type toggle */}
       <div style={{ padding: "20px 28px", borderBottom: `1px solid ${C.border}` }}>
         <div style={{ display: "flex", background: C.surfaceAlt, borderRadius: 12, padding: 4, gap: 4 }}>
@@ -243,6 +303,12 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
           boxShadow: canSave ? `0 8px 24px ${C.accentGlow}` : "none",
           transition: `all 200ms ${springs.snap}`,
         }}>Save Transaction</button>
+        {canSave && onSaveTemplates && (
+          <button onClick={saveAsTemplate} style={{
+            width: "100%", marginTop: 10, padding: "10px", borderRadius: 12, border: `1px dashed ${C.border}`,
+            background: "transparent", color: C.textMuted, fontSize: 13, fontWeight: 500, cursor: "pointer",
+          }}>⚡ Save as template</button>
+        )}
       </div>
     </SlidePanel>
   );

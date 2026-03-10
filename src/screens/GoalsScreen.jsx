@@ -19,6 +19,9 @@ function GoalCard({ goal, i, user, C, onAddMoney, onTogglePause, onEdit, onDelet
   const deadline = goal.deadline ? new Date(goal.deadline) : null;
   const daysLeft = deadline ? Math.ceil((deadline - new Date()) / 86400000) : null;
   const [hov, setHov] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const contributions = goal.contributions || [];
+
   return (
     <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
       background: C.surface, borderRadius: 22, padding: "24px",
@@ -49,11 +52,19 @@ function GoalCard({ goal, i, user, C, onAddMoney, onTogglePause, onEdit, onDelet
             : `${user.currency} ${remaining.toLocaleString()} to go`}
       </div>
       <ProgressBar value={goal.current} max={goal.target} color={goal.color} delay={100 + i * 60} C={C} height={6} />
+
+      {/* Action buttons */}
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         {onAddMoney && <button onClick={() => onAddMoney(goal.id)} style={{
           flex: 1, padding: "10px", background: goal.color + "22", color: goal.color,
           border: `1px solid ${goal.color}40`, borderRadius: 12, cursor: "pointer", fontWeight: 600, fontSize: 13,
         }}>+ Add Money</button>}
+        {contributions.length > 0 && (
+          <button onClick={() => setShowHistory(s => !s)} style={{
+            padding: "10px 12px", background: C.surfaceAlt, color: C.textMuted,
+            border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13,
+          }}>📋 {contributions.length}</button>
+        )}
         {onTogglePause && <button onClick={onTogglePause} style={{
           padding: "10px 14px", background: C.surfaceAlt, color: C.textSub,
           border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13,
@@ -61,6 +72,24 @@ function GoalCard({ goal, i, user, C, onAddMoney, onTogglePause, onEdit, onDelet
         {onEdit && <button onClick={onEdit} style={{ padding: "10px 12px", background: C.surfaceAlt, color: C.textMuted, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>✏️</button>}
         {onDelete && <button onClick={onDelete} style={{ padding: "10px 12px", background: C.expenseSoft, color: C.expense, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>🗑</button>}
       </div>
+
+      {/* Contribution history */}
+      {showHistory && contributions.length > 0 && (
+        <div style={{ marginTop: 14, borderTop: `1px solid ${C.border}`, paddingTop: 14, animation: `slideUp 200ms ${springs.snap}` }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>Contribution History</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 180, overflowY: "auto" }}>
+            {[...contributions].reverse().map((c, idx) => (
+              <div key={c.id || idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: C.surfaceAlt, borderRadius: 10 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.income }}>+ {user.currency} {c.amount.toLocaleString()}</div>
+                  {c.note && <div style={{ fontSize: 11, color: C.textMuted }}>{c.note}</div>}
+                </div>
+                <div style={{ fontSize: 11, color: C.textMuted }}>{new Date(c.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -69,6 +98,7 @@ export default function GoalsScreen({ goals, setGoals, user, C, selectedYear, is
   const isMobile = useIsMobile();
   const [addMoneyGoal, setAddMoneyGoal] = useState(null);
   const [addAmount, setAddAmount] = useState("");
+  const [addNote, setAddNote] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [editGoal, setEditGoal] = useState(null);
   const [newGoal, setNewGoal] = useState({ name: "", icon: "🎯", target: "", deadline: "", color: C.accent });
@@ -79,9 +109,20 @@ export default function GoalsScreen({ goals, setGoals, user, C, selectedYear, is
   const addMoney = () => {
     const amt = parseFloat(addAmount);
     if (!amt || !addMoneyGoal) return;
-    setGoals(gs => gs.map(g => g.id === addMoneyGoal ? { ...g, current: Math.min(g.current + amt, g.target) } : g));
+    const contribution = {
+      id: `c${Date.now()}`,
+      date: new Date().toISOString().split("T")[0],
+      amount: amt,
+      note: addNote.trim() || null,
+    };
+    setGoals(gs => gs.map(g => g.id === addMoneyGoal ? {
+      ...g,
+      current: Math.min(g.current + amt, g.target),
+      contributions: [...(g.contributions || []), contribution],
+    } : g));
     setAddMoneyGoal(null);
     setAddAmount("");
+    setAddNote("");
   };
 
   return (
@@ -106,11 +147,13 @@ export default function GoalsScreen({ goals, setGoals, user, C, selectedYear, is
       </div>
 
       {addMoneyGoal && (
-        <Modal onClose={() => setAddMoneyGoal(null)} C={C} width={360}>
+        <Modal onClose={() => { setAddMoneyGoal(null); setAddAmount(""); setAddNote(""); }} C={C} width={360}>
           <div style={{ padding: 28 }}>
             <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, color: C.text, marginBottom: 20 }}>Add Money</h3>
             <input type="number" placeholder="Amount" value={addAmount} onChange={e => setAddAmount(e.target.value)}
-              style={{ width: "100%", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontSize: 16, color: C.text, outline: "none", marginBottom: 14, textAlign: "center" }} />
+              style={{ width: "100%", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", fontSize: 16, color: C.text, outline: "none", marginBottom: 10, textAlign: "center" }} />
+            <input placeholder="Note (optional)" value={addNote} onChange={e => setAddNote(e.target.value)}
+              style={{ width: "100%", background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, color: C.text, outline: "none", marginBottom: 14 }} />
             <button onClick={addMoney} style={{ width: "100%", padding: "13px", background: C.accent, color: "white", border: "none", borderRadius: 14, cursor: "pointer", fontWeight: 700, fontSize: 15, boxShadow: `0 8px 24px ${C.accentGlow}` }}>Save</button>
           </div>
         </Modal>
