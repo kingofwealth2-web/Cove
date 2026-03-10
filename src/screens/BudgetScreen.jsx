@@ -153,12 +153,7 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
                   </div>
                   {isEnvelope
                     ? <ProgressBar value={barVal} max={barMax > 0 ? barMax : 1} color={isOver ? C.expense : barColor} delay={80 + i * 40} C={C} />
-                    : (
-                      /* Flexible: just a solid fill bar, no max cap */
-                      <div style={{ height: 5, borderRadius: 99, background: C.border, overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: spent > 0 ? "100%" : "0%", background: cat.color, borderRadius: 99, opacity: 0.7 }} />
-                      </div>
-                    )
+                    : <ProgressBar value={spent} max={budget > 0 ? budget : (spent || 1)} color={spent > budget && budget > 0 ? C.warning : cat.color} delay={80 + i * 40} C={C} />
                   }
                 </div>
 
