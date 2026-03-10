@@ -147,6 +147,9 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
                     {isEnvelope && isOver && <span style={{ fontSize: 11, fontWeight: 600, color: C.expense, background: C.expenseSoft, padding: "2px 8px", borderRadius: 99 }}>Over</span>}
                     {isEnvelope && budget === 0 && <span style={{ fontSize: 11, color: C.textMuted, background: C.surfaceAlt, padding: "2px 8px", borderRadius: 99 }}>No limit set</span>}
                     {!isEnvelope && spent === 0 && <span style={{ fontSize: 11, color: C.textMuted, background: C.surfaceAlt, padding: "2px 8px", borderRadius: 99 }}>No spend</span>}
+                    {isEnvelope && budget > 0 && (cat.alertAt ?? 80) !== 80 && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: C.warning, background: C.warning + "18", padding: "2px 8px", borderRadius: 99 }}>alert {cat.alertAt}%</span>
+                    )}
                   </div>
                   {isEnvelope
                     ? <ProgressBar value={barVal} max={barMax > 0 ? barMax : 1} color={isOver ? C.expense : barColor} delay={80 + i * 40} C={C} />
@@ -219,7 +222,7 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
                   )}
 
                   {/* Budget editor */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12 }}>
                     <span style={{ fontSize: 13, color: C.textMuted, flex: 1 }}>{isEnvelope ? "Monthly limit" : "Reference budget"}</span>
                     <span style={{ fontSize: 13, color: C.textMuted }}>{user.currency}</span>
                     <input
@@ -236,6 +239,26 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
                     />
                   </div>
 
+                  {/* Alert threshold editor */}
+                  {isEnvelope && (cat.budget || 0) > 0 && !isReadOnly && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12 }}>
+                      <span style={{ fontSize: 13, color: C.textMuted, flex: 1 }}>Alert me at</span>
+                      <input
+                        type="number" min="1" max="99"
+                        value={editingBudget[`alert_${cat.id}`] ?? (cat.alertAt ?? 80)}
+                        onChange={e => setEditingBudget(prev => ({ ...prev, [`alert_${cat.id}`]: e.target.value }))}
+                        onBlur={() => {
+                          const val = Math.min(99, Math.max(1, parseInt(editingBudget[`alert_${cat.id}`])));
+                          if (!isNaN(val)) setCategories(cats => cats.map(c => c.id === cat.id ? { ...c, alertAt: val } : c));
+                          setEditingBudget(prev => { const n = { ...prev }; delete n[`alert_${cat.id}`]; return n; });
+                        }}
+                        onKeyDown={e => e.key === "Enter" && e.currentTarget.blur()}
+                        style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 14, color: C.text, outline: "none", width: 70, textAlign: "right", fontFamily: "'DM Mono', monospace" }}
+                      />
+                      <span style={{ fontSize: 13, color: C.textMuted }}>%</span>
+                    </div>
+                  )}
+
                   {/* Transactions */}
                   {catTx.length === 0 ? (
                     <div style={{ fontSize: 13, color: C.textMuted, padding: "4px 0" }}>No transactions this month</div>
@@ -249,7 +272,12 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
                         <div style={{ fontSize: 11, color: C.textMuted }}>{new Date(tx.date + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: C.text }}>-{user.currency} {tx.amount.toLocaleString()}</div>
+                        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: C.text }}>
+                          -{user.currency} {tx.amount.toLocaleString()}
+                          {tx.originalCurrency && tx.originalCurrency !== user.currency && (
+                            <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 5 }}>({tx.originalCurrency} {tx.originalAmount?.toLocaleString()})</span>
+                          )}
+                        </div>
                         <button onClick={() => setEditTx({ ...tx })} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: C.textMuted, padding: "2px 4px", borderRadius: 6 }}
                           onMouseEnter={e => e.currentTarget.style.color = C.accent}
                           onMouseLeave={e => e.currentTarget.style.color = C.textMuted}

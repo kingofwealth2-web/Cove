@@ -169,15 +169,17 @@ export default function SettingsScreen({
   onSignOut, transactions, categories, onDeleteAllData,
   budgetMethod, onBudgetMethodChange,
   notifSettings, onNotifSettingsChange,
-  pinHash, onSetPin, selectedYear, onImportTransactions,
+  pinHash, onSetPin, selectedYear, onImportTransactions, fxRates = {}, onSaveFxRates,
 }) {
   const isMobile = useIsMobile();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [pinModal, setPinModal] = useState(null); // null | "enable" | "change" | "remove"
+  const [pinModal, setPinModal] = useState(null);
   const [emailInput, setEmailInput] = useState(session?.user?.email || "");
   const [emailStatus, setEmailStatus] = useState("");
   const [importStatus, setImportStatus] = useState("");
   const [importError, setImportError] = useState("");
+  const [newFxCurrency, setNewFxCurrency] = useState("");
+  const [newFxRate, setNewFxRate] = useState("");
 
   const handleEmailSave = async () => {
     if (!emailInput || emailInput === session?.user?.email) return;
@@ -347,6 +349,71 @@ export default function SettingsScreen({
         </div>
         <div style={{ fontSize: 12, color: C.textMuted, marginTop: 8 }}>
           {budgetMethod === "envelope" ? "Hard limits — spending stops at your budget." : "Soft limits — track without restrictions."}
+        </div>
+      </Section>
+
+      <Section title="Foreign Currencies" C={C}>
+        <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 14, lineHeight: 1.5 }}>
+          Set exchange rates to log transactions in other currencies. All totals are converted to {user.currency}.
+        </div>
+
+        {/* Existing rates */}
+        {Object.entries(fxRates).map(([currency, rate]) => (
+          <div key={currency} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.text, width: 40 }}>{currency}</span>
+            <span style={{ fontSize: 12, color: C.textMuted, flex: 1 }}>1 {currency} =</span>
+            <input
+              type="number" min="0" step="0.01"
+              defaultValue={rate}
+              onBlur={e => {
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val) && val > 0) {
+                  const updated = { ...fxRates, [currency]: val };
+                  onSaveFxRates && onSaveFxRates(updated);
+                }
+              }}
+              style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", fontSize: 13, color: C.text, outline: "none", width: 90, textAlign: "right", fontFamily: "'DM Mono', monospace" }}
+            />
+            <span style={{ fontSize: 12, color: C.textMuted, width: 36 }}>{user.currency}</span>
+            <button onClick={() => {
+              const updated = { ...fxRates };
+              delete updated[currency];
+              onSaveFxRates && onSaveFxRates(updated);
+            }} style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, fontSize: 14, padding: "2px 4px", borderRadius: 6 }}
+              onMouseEnter={e => e.currentTarget.style.color = C.expense}
+              onMouseLeave={e => e.currentTarget.style.color = C.textMuted}
+            >✕</button>
+          </div>
+        ))}
+
+        {/* Add new currency */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
+          <input
+            placeholder="USD" maxLength={4}
+            value={newFxCurrency}
+            onChange={e => setNewFxCurrency(e.target.value.toUpperCase())}
+            style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: C.text, outline: "none", width: 72, fontWeight: 700, textTransform: "uppercase" }}
+          />
+          <span style={{ fontSize: 12, color: C.textMuted }}>= </span>
+          <input
+            type="number" min="0" step="0.01" placeholder="rate"
+            value={newFxRate}
+            onChange={e => setNewFxRate(e.target.value)}
+            style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: C.text, outline: "none", flex: 1, fontFamily: "'DM Mono', monospace" }}
+          />
+          <span style={{ fontSize: 12, color: C.textMuted }}>{user.currency}</span>
+          <button onClick={() => {
+            const code = newFxCurrency.trim().toUpperCase();
+            const rate = parseFloat(newFxRate);
+            if (code.length >= 2 && !isNaN(rate) && rate > 0 && code !== user.currency) {
+              const updated = { ...fxRates, [code]: rate };
+              onSaveFxRates && onSaveFxRates(updated);
+              setNewFxCurrency(""); setNewFxRate("");
+            }
+          }} style={{
+            padding: "9px 16px", background: C.accent, color: "white", border: "none",
+            borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
+          }}>+ Add</button>
         </div>
       </Section>
 

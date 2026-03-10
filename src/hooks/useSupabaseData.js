@@ -20,6 +20,7 @@ export function useSupabaseData(session) {
   const notifSettings = profile?.notif_settings ? { ...DEFAULT_NOTIF, ...profile.notif_settings } : DEFAULT_NOTIF;
   const budgetMethod  = profile?.budget_method || "envelope";
   const pinHash       = profile?.pin_hash || null;
+  const fxRates       = profile?.fx_rates || {};
 
   const expenseCategories = categories.filter(c => !c.is_income);
 
@@ -40,10 +41,11 @@ export function useSupabaseData(session) {
 
     expenseCategories.forEach(cat => {
       const spent = monthTx.filter(t => t.type === "expense" && t.categoryId === cat.id).reduce((s, t) => s + t.amount, 0);
+      const alertPct = (cat.alertAt ?? 80) / 100;
       if (cat.budget > 0 && spent > cat.budget && notifSettings.overBudget) {
         items.push({ id: `over-${cat.id}`, type: "over", title: `${cat.name} budget exceeded`, body: `You've spent ${spent.toLocaleString()} of your ${cat.budget.toLocaleString()} budget.`, time: "This month", read: false });
-      } else if (cat.budget > 0 && spent / cat.budget > 0.8 && notifSettings.budgetWarning) {
-        items.push({ id: `warn-${cat.id}`, type: "warning", title: `${cat.name} at 80%`, body: `You've used ${Math.round(spent/cat.budget*100)}% of your ${cat.name} budget.`, time: "This month", read: false });
+      } else if (cat.budget > 0 && spent / cat.budget >= alertPct && notifSettings.budgetWarning) {
+        items.push({ id: `warn-${cat.id}`, type: "warning", title: `${cat.name} at ${cat.alertAt ?? 80}%`, body: `You've used ${Math.round(spent/cat.budget*100)}% of your ${cat.name} budget.`, time: "This month", read: false });
       }
     });
 
@@ -73,8 +75,8 @@ export function useSupabaseData(session) {
   }, [transactions, bills, expenseCategories, notifSettings]);
 
   // ── Mappers ──────────────────────────────────────────────────────────────
-  const mapCat  = c => ({ id: c.id, name: c.name, icon: c.icon, color: c.color, budget: c.budget_amount, group: c.group_name, rollover: c.rollover, is_income: c.is_income || false });
-  const mapTx   = t => ({ id: t.id, categoryId: t.category_id, amount: t.amount, type: t.type, note: t.note, date: t.date, isRecurring: t.is_recurring });
+  const mapCat  = c => ({ id: c.id, name: c.name, icon: c.icon, color: c.color, budget: c.budget_amount, group: c.group_name, rollover: c.rollover, is_income: c.is_income || false, alertAt: c.alert_at ?? 80 });
+  const mapTx   = t => ({ id: t.id, categoryId: t.category_id, amount: t.amount, type: t.type, note: t.note, date: t.date, isRecurring: t.is_recurring, originalCurrency: t.original_currency || null, originalAmount: t.original_amount || null, exchangeRate: t.exchange_rate || 1 });
   const mapBill = b => ({ id: b.id, name: b.name, amount: b.amount, dueDay: b.due_day, categoryId: b.category_id, isSubscription: b.is_subscription, paid: b.paid });
   const mapGoal = g => ({ id: g.id, name: g.name, icon: g.icon, target: g.target_amount, current: g.current_amount, deadline: g.deadline, color: g.color, paused: g.paused });
   const mapDebt = d => ({ id: d.id, lender: d.lender, originalAmount: d.original_amount, currentBalance: d.current_balance, interestRate: d.interest_rate, minimumPayment: d.minimum_payment, dueDay: d.due_day, type: d.type });
@@ -210,11 +212,19 @@ export function useSupabaseData(session) {
     setProfile(p => ({ ...p, ...dbUpdates }));
   };
 
+  const saveFxRates = async (rates) => {
+    await supabase.from("profiles").update({ fx_rates: rates }).eq("id", uid);
+    setProfile(p => ({ ...p, fx_rates: rates }));
+  };
+
   // ── Transactions ─────────────────────────────────────────────────────────
   const addTransaction = async (tx) => {
     const { data } = await supabase.from("transactions").insert({
       user_id: uid, category_id: tx.categoryId || null,
       amount: tx.amount, type: tx.type, note: tx.note, date: tx.date, is_recurring: tx.isRecurring,
+      original_currency: tx.originalCurrency || null,
+      original_amount: tx.originalAmount || null,
+      exchange_rate: tx.exchangeRate || 1,
     }).select().single();
     if (data) setTransactionsState(ts => [mapTx(data), ...ts]);
   };
@@ -229,6 +239,9 @@ export function useSupabaseData(session) {
     await supabase.from("transactions").update({
       category_id: updates.categoryId || null, amount: updates.amount,
       type: updates.type, note: updates.note, date: updates.date, is_recurring: updates.isRecurring,
+      original_currency: updates.originalCurrency || null,
+      original_amount: updates.originalAmount || null,
+      exchange_rate: updates.exchangeRate || 1,
     }).eq("id", id).eq("user_id", uid);
   };
 
@@ -259,6 +272,7 @@ export function useSupabaseData(session) {
       name: c.name, icon: c.icon, color: c.color,
       budget_amount: c.budget, group_name: c.group, rollover: c.rollover,
       is_income: c.is_income || false, sort_order: next.indexOf(c),
+      alert_at: c.alertAt ?? 80,
     }));
   };
 
@@ -352,9 +366,9 @@ export function useSupabaseData(session) {
   return {
     profile, loading,
     transactions, categories, bills, goals, debts, assets, liabilities,
-    notifications, notifSettings, budgetMethod, pinHash,
+    notifications, notifSettings, budgetMethod, pinHash, fxRates,
     addTransaction, deleteTransaction, updateTransaction,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
-    saveOnboarding, saveSettings, deleteAllData, snapshots, saveNetworthSnapshot,
+    saveOnboarding, saveSettings, saveFxRates, deleteAllData, snapshots, saveNetworthSnapshot,
   };
 }

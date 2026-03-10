@@ -64,8 +64,15 @@ function TxRow({ tx, i, isLast, categories, user, C, formatDate, onDelete, onEdi
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {tx.isRecurring && <span style={{ fontSize: 10, color: C.accent, background: C.accentSoft, padding: "2px 6px", borderRadius: 99, fontWeight: 700 }}>🔄</span>}
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 600, color: tx.type === "income" ? C.income : C.text, flexShrink: 0 }}>
-            {tx.type === "income" ? "+" : "-"}{user.currency} {tx.amount.toLocaleString()}
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 600, color: tx.type === "income" ? C.income : C.text, flexShrink: 0 }}>
+              {tx.type === "income" ? "+" : "-"}{user.currency} {tx.amount.toLocaleString()}
+            </div>
+            {tx.originalCurrency && tx.originalCurrency !== user.currency && (
+              <div style={{ fontSize: 11, color: C.textMuted, fontFamily: "'DM Mono', monospace" }}>
+                {tx.originalCurrency} {tx.originalAmount?.toLocaleString()}
+              </div>
+            )}
           </div>
         </div>
       </div>
