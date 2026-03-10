@@ -180,6 +180,9 @@ export default function SettingsScreen({
   const [importError, setImportError] = useState("");
   const [newFxCurrency, setNewFxCurrency] = useState("");
   const [newFxRate, setNewFxRate] = useState("");
+  const [fxFetching, setFxFetching] = useState(false);
+  const [fxError, setFxError] = useState("");
+  const [availableCurrencies, setAvailableCurrencies] = useState([]);
 
   const handleEmailSave = async () => {
     if (!emailInput || emailInput === session?.user?.email) return;
@@ -190,6 +193,45 @@ export default function SettingsScreen({
   };
 
   const handleRemovePin = () => { onSetPin(null); setPinModal(null); };
+
+  // Load available currency list once for the picker
+  useEffect(() => {
+    fetch("https://open.er-api.com/v6/latest/USD")
+      .then(r => r.json())
+      .then(d => { if (d.rates) setAvailableCurrencies(Object.keys(d.rates).sort()); })
+      .catch(() => {});
+  }, []);
+
+  const fetchLiveRates = async () => {
+    setFxFetching(true);
+    setFxError("");
+    try {
+      const res = await fetch(`https://open.er-api.com/v6/latest/${user.currency}`);
+      const data = await res.json();
+      if (data.result !== "success" || !data.rates) {
+        setFxError(`Could not fetch rates for ${user.currency}. Try updating manually.`);
+        setFxFetching(false); return;
+      }
+      // Build updated rates: keep existing configured currencies, update their values
+      // Also keep any user-added currencies that the API knows about
+      const existing = Object.keys(fxRates).filter(c => c !== "_updatedAt");
+      const toUpdate = existing.length > 0 ? existing : Object.keys(data.rates).slice(0, 5);
+      const updated = { ...fxRates };
+      let updatedCount = 0;
+      toUpdate.forEach(code => {
+        if (data.rates[code]) {
+          updated[code] = parseFloat((1 / data.rates[code]).toFixed(6));
+          updatedCount++;
+        }
+      });
+      updated._updatedAt = new Date().toISOString();
+      onSaveFxRates && await onSaveFxRates(updated);
+      setFxFetching(false);
+    } catch (e) {
+      setFxError("Network error. Check your connection.");
+      setFxFetching(false);
+    }
+  };
 
   const currentYear = new Date().getFullYear();
   const exportYear = selectedYear || currentYear;
@@ -353,18 +395,46 @@ export default function SettingsScreen({
       </Section>
 
       <Section title="Foreign Currencies" C={C}>
-        <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 14, lineHeight: 1.5 }}>
-          Set exchange rates to log transactions in other currencies. All totals are converted to {user.currency}.
+        {/* Header: description + fetch button */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+          <div>
+            <div style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.5 }}>
+              Log transactions in other currencies — amounts are auto-converted to {user.currency}.
+            </div>
+            {fxRates._updatedAt && (
+              <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>
+                Rates updated {(() => {
+                  const diff = Math.round((Date.now() - new Date(fxRates._updatedAt)) / 60000);
+                  if (diff < 2) return "just now";
+                  if (diff < 60) return `${diff} min ago`;
+                  if (diff < 1440) return `${Math.round(diff/60)}h ago`;
+                  return `${Math.round(diff/1440)}d ago`;
+                })()}
+              </div>
+            )}
+          </div>
+          <button onClick={fetchLiveRates} disabled={fxFetching} style={{
+            padding: "8px 14px", borderRadius: 10, border: "none", cursor: fxFetching ? "default" : "pointer",
+            background: fxFetching ? C.surfaceAlt : C.accentSoft,
+            color: fxFetching ? C.textMuted : C.accent,
+            fontSize: 12, fontWeight: 700, whiteSpace: "nowrap", flexShrink: 0,
+            transition: `all 200ms ${springs.snap}`,
+          }}>
+            {fxFetching ? "Fetching…" : "↻ Live rates"}
+          </button>
         </div>
 
+        {fxError && <div style={{ fontSize: 12, color: C.expense, marginBottom: 10, padding: "8px 12px", background: C.expenseSoft, borderRadius: 10 }}>{fxError}</div>}
+
         {/* Existing rates */}
-        {Object.entries(fxRates).map(([currency, rate]) => (
+        {Object.entries(fxRates).filter(([k]) => k !== "_updatedAt").map(([currency, rate]) => (
           <div key={currency} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.text, width: 40 }}>{currency}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.text, width: 44 }}>{currency}</span>
             <span style={{ fontSize: 12, color: C.textMuted, flex: 1 }}>1 {currency} =</span>
             <input
-              type="number" min="0" step="0.01"
-              defaultValue={rate}
+              type="number" min="0" step="0.0001"
+              key={`${currency}-${rate}`}
+              defaultValue={typeof rate === "number" ? rate.toFixed(4) : rate}
               onBlur={e => {
                 const val = parseFloat(e.target.value);
                 if (!isNaN(val) && val > 0) {
@@ -372,14 +442,14 @@ export default function SettingsScreen({
                   onSaveFxRates && onSaveFxRates(updated);
                 }
               }}
-              style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", fontSize: 13, color: C.text, outline: "none", width: 90, textAlign: "right", fontFamily: "'DM Mono', monospace" }}
+              style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", fontSize: 13, color: C.text, outline: "none", width: 100, textAlign: "right", fontFamily: "'DM Mono', monospace" }}
             />
             <span style={{ fontSize: 12, color: C.textMuted, width: 36 }}>{user.currency}</span>
             <button onClick={() => {
               const updated = { ...fxRates };
               delete updated[currency];
               onSaveFxRates && onSaveFxRates(updated);
-            }} style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, fontSize: 14, padding: "2px 4px", borderRadius: 6 }}
+            }} style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, fontSize: 14, padding: "2px 6px", borderRadius: 6 }}
               onMouseEnter={e => e.currentTarget.style.color = C.expense}
               onMouseLeave={e => e.currentTarget.style.color = C.textMuted}
             >✕</button>
@@ -388,32 +458,45 @@ export default function SettingsScreen({
 
         {/* Add new currency */}
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
-          <input
-            placeholder="USD" maxLength={4}
+          <select
             value={newFxCurrency}
-            onChange={e => setNewFxCurrency(e.target.value.toUpperCase())}
-            style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: C.text, outline: "none", width: 72, fontWeight: 700, textTransform: "uppercase" }}
-          />
-          <span style={{ fontSize: 12, color: C.textMuted }}>= </span>
-          <input
-            type="number" min="0" step="0.01" placeholder="rate"
-            value={newFxRate}
-            onChange={e => setNewFxRate(e.target.value)}
-            style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: C.text, outline: "none", flex: 1, fontFamily: "'DM Mono', monospace" }}
-          />
-          <span style={{ fontSize: 12, color: C.textMuted }}>{user.currency}</span>
-          <button onClick={() => {
+            onChange={e => setNewFxCurrency(e.target.value)}
+            style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 10px", fontSize: 13, color: newFxCurrency ? C.text : C.textMuted, outline: "none", flex: 1 }}
+          >
+            <option value="">Currency…</option>
+            {(availableCurrencies.length > 0 ? availableCurrencies : ["USD","EUR","GBP","NGN","KES","ZAR","CAD","AUD","JPY","CNY","INR"])
+              .filter(c => c !== user.currency && !fxRates[c])
+              .map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <button onClick={async () => {
             const code = newFxCurrency.trim().toUpperCase();
-            const rate = parseFloat(newFxRate);
-            if (code.length >= 2 && !isNaN(rate) && rate > 0 && code !== user.currency) {
-              const updated = { ...fxRates, [code]: rate };
-              onSaveFxRates && onSaveFxRates(updated);
-              setNewFxCurrency(""); setNewFxRate("");
-            }
-          }} style={{
-            padding: "9px 16px", background: C.accent, color: "white", border: "none",
-            borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
+            if (!code || code === user.currency) return;
+            // Try to fetch live rate first
+            try {
+              const res = await fetch(`https://open.er-api.com/v6/latest/${user.currency}`);
+              const data = await res.json();
+              if (data.rates?.[code]) {
+                const liveRate = parseFloat((1 / data.rates[code]).toFixed(6));
+                const updated = { ...fxRates, [code]: liveRate, _updatedAt: new Date().toISOString() };
+                onSaveFxRates && onSaveFxRates(updated);
+                setNewFxCurrency("");
+                return;
+              }
+            } catch {}
+            // Fallback: add with rate 1 for manual entry
+            const updated = { ...fxRates, [code]: 1 };
+            onSaveFxRates && onSaveFxRates(updated);
+            setNewFxCurrency("");
+          }} disabled={!newFxCurrency} style={{
+            padding: "9px 18px", background: newFxCurrency ? C.accent : C.surfaceAlt,
+            color: newFxCurrency ? "white" : C.textMuted,
+            border: "none", borderRadius: 10, cursor: newFxCurrency ? "pointer" : "not-allowed",
+            fontSize: 13, fontWeight: 700, whiteSpace: "nowrap",
+            transition: `all 150ms ${springs.snap}`,
           }}>+ Add</button>
+        </div>
+        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 8 }}>
+          Adding a currency fetches its current rate automatically.
         </div>
       </Section>
 

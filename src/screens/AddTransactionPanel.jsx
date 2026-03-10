@@ -21,18 +21,32 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
     return () => window.removeEventListener("resize", handler);
   }, []);
 
-  // When currency changes, prefill stored rate
+  // When currency changes, prefill stored rate or fetch live
   useEffect(() => {
-    if (selectedCurrency !== user.currency) {
-      setCustomRate(String(fxRates[selectedCurrency] || ""));
+    if (selectedCurrency === user.currency) { setCustomRate(""); return; }
+    if (fxRates[selectedCurrency]) {
+      setCustomRate(String(fxRates[selectedCurrency]));
     } else {
-      setCustomRate("");
+      // Fetch live rate for this currency pair
+      setCustomRate("loading");
+      fetch(`https://open.er-api.com/v6/latest/${user.currency}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.rates?.[selectedCurrency]) {
+            const liveRate = parseFloat((1 / d.rates[selectedCurrency]).toFixed(6));
+            setCustomRate(String(liveRate));
+          } else {
+            setCustomRate("");
+          }
+        })
+        .catch(() => setCustomRate(""));
     }
   }, [selectedCurrency]);
 
-  const availableCurrencies = [user.currency, ...Object.keys(fxRates).filter(c => c !== user.currency)];
+  const availableCurrencies = [user.currency, ...Object.keys(fxRates).filter(c => c !== user.currency && c !== "_updatedAt")];
   const isForeign = selectedCurrency !== user.currency;
-  const rate = isForeign ? (parseFloat(customRate) || fxRates[selectedCurrency] || 1) : 1;
+  const isLoadingRate = customRate === "loading";
+  const rate = isForeign ? (isLoadingRate ? 0 : (parseFloat(customRate) || fxRates[selectedCurrency] || 1)) : 1;
   const parsedAmount = parseFloat(amount) || 0;
   const baseAmount = isForeign ? parsedAmount * rate : parsedAmount;
 
@@ -120,11 +134,15 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
           {isForeign && (
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, padding: "10px 14px", background: C.accentSoft, borderRadius: 12, border: `1px solid ${C.accent}22` }}>
               <span style={{ fontSize: 12, color: C.textMuted, flex: 1 }}>1 {selectedCurrency} =</span>
-              <input
-                type="number" min="0" step="0.01" placeholder="rate"
-                value={customRate} onChange={e => setCustomRate(e.target.value)}
-                style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", fontSize: 13, color: C.text, outline: "none", width: 80, textAlign: "right", fontFamily: "'DM Mono', monospace" }}
-              />
+              {isLoadingRate ? (
+                <span style={{ fontSize: 12, color: C.textMuted, fontStyle: "italic" }}>Fetching rate…</span>
+              ) : (
+                <input
+                  type="number" min="0" step="0.0001" placeholder="rate"
+                  value={customRate} onChange={e => setCustomRate(e.target.value)}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: "5px 9px", fontSize: 13, color: C.text, outline: "none", width: 100, textAlign: "right", fontFamily: "'DM Mono', monospace" }}
+                />
+              )}
               <span style={{ fontSize: 12, color: C.textMuted }}>{user.currency}</span>
               {parsedAmount > 0 && rate > 0 && (
                 <span style={{ fontSize: 13, fontWeight: 700, color: C.accent, marginLeft: 4 }}>→ {user.currency} {baseAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
