@@ -2,10 +2,16 @@ import { useState } from "react";
 import { springs } from "../tokens/springs";
 import Modal from "../components/ui/Modal";
 
-export default function RecurringScreen({ transactions, categories, user, C, onUpdateTransaction, onDeleteTransaction }) {
+export default function RecurringScreen({ transactions, categories, user, C, onUpdateTransaction, onDeleteTransaction, selectedYear, isReadOnly }) {
   const [editTx, setEditTx] = useState(null);
 
-  const recurring = transactions.filter(t => t.isRecurring);
+  const now = new Date();
+  const year = selectedYear || now.getFullYear();
+
+  const recurring = transactions.filter(t => {
+    if (!t.isRecurring) return false;
+    return new Date(t.date).getFullYear() === year;
+  });
   const income = recurring.filter(t => t.type === "income");
   const expenses = recurring.filter(t => t.type === "expense");
 
@@ -33,14 +39,14 @@ export default function RecurringScreen({ transactions, categories, user, C, onU
         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, color: tx.type === "income" ? C.income : C.expense, fontWeight: 600, marginRight: 8 }}>
           {tx.type === "income" ? "+" : "-"}{user.currency} {tx.amount.toLocaleString()}
         </div>
-        <button onClick={() => setEditTx({ ...tx })} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: C.textMuted, padding: "4px 6px", borderRadius: 8 }}
+        {!isReadOnly && <button onClick={() => setEditTx({ ...tx })} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: C.textMuted, padding: "4px 6px", borderRadius: 8 }}
           onMouseEnter={e => e.currentTarget.style.color = C.accent}
           onMouseLeave={e => e.currentTarget.style.color = C.textMuted}
-        >✏️</button>
-        <button onClick={() => onDeleteTransaction && onDeleteTransaction(tx.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: C.textMuted, padding: "4px 6px", borderRadius: 8 }}
+        >✏️</button>}
+        {!isReadOnly && <button onClick={() => onDeleteTransaction && onDeleteTransaction(tx.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: C.textMuted, padding: "4px 6px", borderRadius: 8 }}
           onMouseEnter={e => e.currentTarget.style.color = C.expense}
           onMouseLeave={e => e.currentTarget.style.color = C.textMuted}
-        >🗑</button>
+        >🗑</button>}
       </div>
     );
   };

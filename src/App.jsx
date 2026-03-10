@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { darkColors, lightColors, accentOptions } from "./tokens/colors";
 import { springs } from "./tokens/springs";
 import { supabase } from "./lib/supabase";
@@ -7,6 +7,7 @@ import { useSupabaseData } from "./hooks/useSupabaseData";
 
 import GlobalStyles from "./components/ui/GlobalStyles";
 import Toast from "./components/ui/Toast";
+import YearBar from "./components/ui/YearBar";
 import Sidebar from "./components/layout/Sidebar";
 import MobileTopBar from "./components/layout/MobileTopBar";
 
@@ -37,6 +38,10 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [pinLocked, setPinLocked] = useState(false);
+
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const isReadOnly = selectedYear !== currentYear;
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768);
@@ -75,6 +80,13 @@ export default function App() {
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [pinHash]);
 
+  // Derive min year from earliest transaction, fallback to currentYear - 3
+  const minYear = useMemo(() => {
+    if (!transactions.length) return currentYear - 3;
+    const years = transactions.map(t => new Date(t.date).getFullYear());
+    return Math.min(...years, currentYear - 3);
+  }, [transactions, currentYear]);
+
   const base = theme === "dark" ? darkColors : lightColors;
   const C = { ...base, accent: accentChoice.value, accentSoft: accentChoice.soft, accentGlow: accentChoice.glow, accentDark: accentChoice.dark };
 
@@ -84,7 +96,6 @@ export default function App() {
       setTheme(profile.theme || "dark");
       const found = accentOptions.find(a => a.value === profile.accent_color);
       if (found) setAccentChoice(found);
-      // Show PIN lock screen on first load if PIN is set
       if (profile.pin_hash) setPinLocked(true);
     }
   }, [profile?.id]);
@@ -189,10 +200,7 @@ export default function App() {
 
   if (!session) return <AuthScreen />;
   if (!profile && !loading) return <Onboarding onComplete={handleOnboardingComplete} />;
-
-  if (pinLocked && pinHash) {
-    return <PinScreen pinHash={pinHash} onUnlock={() => setPinLocked(false)} C={C} />;
-  }
+  if (pinLocked && pinHash) return <PinScreen pinHash={pinHash} onUnlock={() => setPinLocked(false)} C={C} />;
 
   const getScreenAnimation = (id) => {
     if (id === active && !animatedScreens.current.has(id)) {
@@ -202,15 +210,18 @@ export default function App() {
     return "none";
   };
 
+  const yearBarProps = { selectedYear, onYearChange: setSelectedYear, minYear, maxYear: currentYear, C, isMobile };
+  const readOnlyProps = { selectedYear, isReadOnly };
+
   const SCREENS = [
-    { id: "home",          el: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} /> },
-    { id: "budget",        el: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} /> },
-    { id: "trends",        el: <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} /> },
-    { id: "recurring",     el: <RecurringScreen transactions={transactions} categories={categories} user={user} C={C} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} /> },
-    { id: "bills",         el: <BillsScreen bills={bills} setBills={setBills} user={user} C={C} /> },
-    { id: "goals",         el: <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} /> },
-    { id: "debt",          el: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} /> },
-    { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} /> },
+    { id: "home",          el: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} selectedYear={selectedYear} /> },
+    { id: "budget",        el: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} {...readOnlyProps} /> },
+    { id: "trends",        el: <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} {...readOnlyProps} /> },
+    { id: "recurring",     el: <RecurringScreen transactions={transactions} categories={categories} user={user} C={C} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} {...readOnlyProps} /> },
+    { id: "bills",         el: <BillsScreen bills={bills} setBills={setBills} user={user} C={C} {...readOnlyProps} /> },
+    { id: "goals",         el: <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} {...readOnlyProps} /> },
+    { id: "debt",          el: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} {...readOnlyProps} /> },
+    { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} {...readOnlyProps} /> },
     { id: "notifications", el: <NotificationsScreen notifications={notifications} setNotifications={() => {}} C={C} /> },
     { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} /> },
   ];
@@ -221,8 +232,33 @@ export default function App() {
       <div style={{ display: "flex", minHeight: "100vh", background: C.background }}>
         <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={notifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-          {isMobile && <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => setShowAdd(true)} C={C} notifications={notifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />}
-          <main style={{ flex: 1, position: "relative", maxHeight: isMobile ? "calc(100vh - 60px)" : "100vh" }}>
+          {isMobile
+            ? <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => !isReadOnly && setShowAdd(true)} C={C} notifications={notifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} yearBarProps={yearBarProps} isReadOnly={isReadOnly} />
+            : (
+              <div style={{
+                position: "sticky", top: 0, zIndex: 50,
+                background: C.background,
+                borderBottom: `1px solid ${isReadOnly ? C.warning + "33" : C.border}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: "10px 52px",
+                transition: `border-color 300ms ${springs.smooth}`,
+              }}>
+                {isReadOnly && (
+                  <div style={{
+                    position: "absolute", left: 52,
+                    fontSize: 12, color: C.warning, fontWeight: 600,
+                    display: "flex", alignItems: "center", gap: 6,
+                    background: C.warning + "14", border: `1px solid ${C.warning + "33"}`,
+                    borderRadius: 8, padding: "4px 10px",
+                  }}>
+                    📅 Read Only — switch to {currentYear} to make changes
+                  </div>
+                )}
+                <YearBar {...yearBarProps} />
+              </div>
+            )
+          }
+          <main style={{ flex: 1, position: "relative", maxHeight: isMobile ? "calc(100vh - 60px)" : "calc(100vh - 45px)" }}>
             {SCREENS.map(({ id, el }) => (
               <div key={id} style={{
                 display: active === id ? "block" : "none",
@@ -236,7 +272,7 @@ export default function App() {
           </main>
         </div>
       </div>
-      {showAdd && <AddTransactionPanel onClose={() => setShowAdd(false)} onSave={handleAddTransaction} categories={categories} user={user} C={C} />}
+      {showAdd && !isReadOnly && <AddTransactionPanel onClose={() => setShowAdd(false)} onSave={handleAddTransaction} categories={categories} user={user} C={C} />}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>
   );

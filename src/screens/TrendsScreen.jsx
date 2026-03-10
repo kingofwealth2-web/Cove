@@ -8,16 +8,23 @@ function useIsMobile() {
   return m;
 }
 
-export default function TrendsScreen({ transactions, categories, user, C }) {
+export default function TrendsScreen({ transactions, categories, user, C, selectedYear, isReadOnly }) {
   const isMobile = useIsMobile();
   const [activeSlice, setActiveSlice] = useState(null);
 
-  // Build last 6 months of real data
   const now = new Date();
-  const months = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
-    return { label: d.toLocaleDateString("en-GB", { month: "short" }), year: d.getFullYear(), month: d.getMonth() };
-  });
+  const year = selectedYear || now.getFullYear();
+
+  // Show 12 months of the selected year, or last 6 months if current year
+  const months = selectedYear && selectedYear !== now.getFullYear()
+    ? Array.from({ length: 12 }, (_, i) => {
+        const d = new Date(year, i, 1);
+        return { label: d.toLocaleDateString("en-GB", { month: "short" }), year: d.getFullYear(), month: d.getMonth() };
+      })
+    : Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+        return { label: d.toLocaleDateString("en-GB", { month: "short" }), year: d.getFullYear(), month: d.getMonth() };
+      });
 
   const barData = months.map(m => {
     const txs = transactions.filter(t => {
@@ -31,11 +38,14 @@ export default function TrendsScreen({ transactions, categories, user, C }) {
     };
   });
 
-  // Current month spending by category (donut)
-  const thisMonth = transactions.filter(t => {
-    const d = new Date(t.date);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && t.type === "expense";
-  });
+  // Current year's spending by category (donut) — use last month of selected year with data
+  const donutMonth = selectedYear && selectedYear !== now.getFullYear()
+    ? transactions.filter(t => new Date(t.date).getFullYear() === year && t.type === "expense")
+    : transactions.filter(t => {
+        const d = new Date(t.date);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && t.type === "expense";
+      });
+  const thisMonth = donutMonth;
   const donutData = categories.map(cat => ({
     name: cat.name, color: cat.color,
     value: thisMonth.filter(t => t.categoryId === cat.id).reduce((s, t) => s + t.amount, 0),
@@ -80,7 +90,7 @@ export default function TrendsScreen({ transactions, categories, user, C }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-      <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px", animation: `slideUp 300ms ${springs.bounce}` }}>Trends</h1>
+      <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px" }}>Trends</h1>
 
       {empty ? (
         <div style={{ background: C.surface, borderRadius: 20, padding: "48px 24px", border: `1px solid ${C.border}`, textAlign: "center" }}>

@@ -11,7 +11,7 @@ function useIsMobile() {
 
 
 
-export default function BillsScreen({ bills, setBills, user, C }) {
+export default function BillsScreen({ bills, setBills, user, C, selectedYear, isReadOnly }) {
   const isMobile = useIsMobile();
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -31,7 +31,7 @@ export default function BillsScreen({ bills, setBills, user, C }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px", animation: `slideUp 300ms ${springs.bounce}` }}>Bills & Subscriptions</h1>
+      <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px" }}>Bills & Subscriptions</h1>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "40ms" }}>
         <div style={{ background: C.surface, borderRadius: 20, padding: "22px 24px", border: `1px solid ${C.border}` }}>
@@ -90,7 +90,7 @@ export default function BillsScreen({ bills, setBills, user, C }) {
       <div style={{ animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "120ms" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: C.text }}>All Bills</h3>
-          <button onClick={() => setShowAdd(true)} style={{ padding: "8px 16px", background: C.accentSoft, color: C.accent, border: "none", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>+ Add Bill</button>
+          {!isReadOnly && <button onClick={() => setShowAdd(true)} style={{ padding: "8px 16px", background: C.accentSoft, color: C.accent, border: "none", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>+ Add Bill</button>}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {bills.map((bill, i) => {
@@ -114,13 +114,13 @@ export default function BillsScreen({ bills, setBills, user, C }) {
                   </div>
                 </div>
                 <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 15, fontWeight: 600, color: C.text }}>{user.currency} {bill.amount}</div>
-                <button onClick={() => setEditBill({ ...bill })} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", cursor: "pointer", fontSize: 14, color: C.textMuted }}>✏️</button>
-                <button onClick={() => deleteBill(bill.id)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", cursor: "pointer", fontSize: 14, color: C.expense }}>🗑</button>
-                <button onClick={() => togglePaid(bill.id)} style={{
+                {!isReadOnly && <button onClick={() => setEditBill({ ...bill })} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", cursor: "pointer", fontSize: 14, color: C.textMuted }}>✏️</button>}
+                {!isReadOnly && <button onClick={() => deleteBill(bill.id)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${C.border}`, background: "transparent", cursor: "pointer", fontSize: 14, color: C.expense }}>🗑</button>}
+                {!isReadOnly && <button onClick={() => togglePaid(bill.id)} style={{
                   width: 32, height: 32, borderRadius: 8, border: `1.5px solid ${bill.paid ? C.income : C.border}`,
                   background: bill.paid ? C.incomeSoft : "transparent", cursor: "pointer", fontSize: 16, color: bill.paid ? C.income : C.textMuted,
                   transition: `all 200ms ${springs.snap}`,
-                }}>{bill.paid ? "✓" : ""}</button>
+                }}>{bill.paid ? "✓" : ""}</button>}
               </div>
             );
           })}

@@ -1,4 +1,5 @@
 import { springs } from "../../tokens/springs";
+import YearBar from "../ui/YearBar";
 
 const SunIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -14,62 +15,72 @@ const MoonIcon = () => (
   </svg>
 );
 
-export default function MobileTopBar({ onMenuOpen, onAdd, C, notifications, theme, onThemeToggle }) {
+export default function MobileTopBar({ onMenuOpen, onAdd, C, notifications, theme, onThemeToggle, yearBarProps, isReadOnly }) {
   const unread = notifications.filter(n => !n.read).length;
   const isDark = theme === "dark";
 
   return (
     <div style={{
       position: "sticky", top: 0, zIndex: 100,
-      background: C.surface, borderBottom: `1px solid ${C.border}`,
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "12px 16px", gap: 8,
+      background: C.surface,
+      borderBottom: `1px solid ${isReadOnly ? C.warning + "44" : C.border}`,
+      display: "flex", flexDirection: "column",
+      transition: `border-color 300ms ${springs.smooth}`,
     }}>
-      <button onClick={onMenuOpen} style={{
-        background: C.surfaceAlt, border: "none", cursor: "pointer",
-        borderRadius: 10, width: 36, height: 36,
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5,
+      {/* Main row */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "10px 16px 6px", gap: 8,
       }}>
-        <div style={{ width: 18, height: 2, borderRadius: 2, background: C.text }} />
-        <div style={{ width: 14, height: 2, borderRadius: 2, background: C.textSub }} />
-        <div style={{ width: 18, height: 2, borderRadius: 2, background: C.text }} />
-      </button>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, justifyContent: "center" }}>
-        <div style={{
-          width: 28, height: 28,
-          background: `linear-gradient(135deg, ${C.accent}, #818CF8)`,
-          borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+        {/* Left: hamburger */}
+        <button onClick={onMenuOpen} style={{
+          background: C.surfaceAlt, border: "none", cursor: "pointer",
+          borderRadius: 10, width: 36, height: 36,
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5,
         }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M3 18C3 15 6 12 12 12C18 12 21 15 21 18" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-            <path d="M12 12C12 8 9 5 6 6" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
-            <path d="M12 12C12 7 15 4 18 6" stroke="white" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
-          </svg>
-        </div>
-        <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 18, color: C.text, letterSpacing: "-0.5px" }}>Cove</span>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {/* Theme toggle */}
-        <button onClick={onThemeToggle} style={{
-          width: 36, height: 36, borderRadius: 10,
-          background: C.surfaceAlt, border: `1px solid ${C.border}`,
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          color: isDark ? "#FFD60A" : "#5254CC",
-          transition: `all 200ms ${springs.snap}`,
-        }}>
-          {isDark ? <SunIcon /> : <MoonIcon />}
+          <div style={{ width: 18, height: 2, borderRadius: 2, background: C.text }} />
+          <div style={{ width: 14, height: 2, borderRadius: 2, background: C.textSub }} />
+          <div style={{ width: 18, height: 2, borderRadius: 2, background: C.text }} />
         </button>
 
-        <button onClick={onAdd} style={{
-          background: C.accent, border: "none", cursor: "pointer",
-          borderRadius: 10, width: 36, height: 36,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "white", fontSize: 22, fontWeight: 300,
-          boxShadow: `0 4px 12px ${C.accentGlow}`,
-        }}>+</button>
+        {/* Center: YearBar */}
+        {yearBarProps && <YearBar {...yearBarProps} isMobile />}
+
+        {/* Right: theme + add */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button onClick={onThemeToggle} style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: C.surfaceAlt, border: `1px solid ${C.border}`,
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            color: isDark ? "#FFD60A" : "#5254CC",
+            transition: `all 200ms ${springs.snap}`,
+          }}>
+            {isDark ? <SunIcon /> : <MoonIcon />}
+          </button>
+
+          <button onClick={onAdd} disabled={isReadOnly} style={{
+            background: isReadOnly ? C.surfaceAlt : C.accent,
+            border: "none", cursor: isReadOnly ? "not-allowed" : "pointer",
+            borderRadius: 10, width: 36, height: 36,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: isReadOnly ? C.textMuted : "white", fontSize: 22, fontWeight: 300,
+            boxShadow: isReadOnly ? "none" : `0 4px 12px ${C.accentGlow}`,
+            transition: `all 200ms ${springs.snap}`,
+            opacity: isReadOnly ? 0.4 : 1,
+          }}>+</button>
+        </div>
       </div>
+
+      {/* Read-only strip */}
+      {isReadOnly && (
+        <div style={{
+          padding: "4px 16px 8px",
+          fontSize: 11, fontWeight: 600, color: C.warning,
+          textAlign: "center", letterSpacing: "0.03em",
+        }}>
+          📅 {yearBarProps?.selectedYear} — Read Only
+        </div>
+      )}
     </div>
   );
 }

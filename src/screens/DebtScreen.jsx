@@ -50,12 +50,12 @@ function DebtCard({ debt, i, user, C, onPayment, onEdit, onDelete }) {
         ))}
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-        <button onClick={() => onPayment(debt.id)} style={{
+        {onPayment && <button onClick={() => onPayment(debt.id)} style={{
           flex: 1, padding: "10px", background: C.accentSoft, color: C.accent,
           border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 600, fontSize: 13,
-        }}>Make Payment</button>
-        <button onClick={onEdit} style={{ padding: "10px 12px", background: C.surfaceAlt, color: C.textMuted, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>✏️</button>
-        <button onClick={onDelete} style={{ padding: "10px 12px", background: C.expenseSoft, color: C.expense, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>🗑</button>
+        }}>Make Payment</button>}
+        {onEdit && <button onClick={onEdit} style={{ padding: "10px 12px", background: C.surfaceAlt, color: C.textMuted, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>✏️</button>}
+        {onDelete && <button onClick={onDelete} style={{ padding: "10px 12px", background: C.expenseSoft, color: C.expense, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>🗑</button>}
       </div>
     </div>
   );
@@ -65,7 +65,7 @@ function DebtCard({ debt, i, user, C, onPayment, onEdit, onDelete }) {
 // DASHBOARD
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function DebtScreen({ debts, setDebts, user, C }) {
+export default function DebtScreen({ debts, setDebts, user, C, selectedYear, isReadOnly }) {
   const isMobile = useIsMobile();
   const [method, setMethod] = useState("snowball");
   const [showAdd, setShowAdd] = useState(false);
@@ -99,7 +99,7 @@ export default function DebtScreen({ debts, setDebts, user, C }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", animation: `slideUp 300ms ${springs.bounce}` }}>
         <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px" }}>Debt Tracker</h1>
-        <button onClick={() => setShowAdd(true)} style={{ padding: "10px 18px", background: C.accent, color: "white", border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 700, fontSize: 14, boxShadow: `0 4px 16px ${C.accentGlow}` }}>+ Add Debt</button>
+        {!isReadOnly && <button onClick={() => setShowAdd(true)} style={{ padding: "10px 18px", background: C.accent, color: "white", border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 700, fontSize: 14, boxShadow: `0 4px 16px ${C.accentGlow}` }}>+ Add Debt</button>}
       </div>
 
       <div style={{ background: C.surface, borderRadius: 20, padding: "28px 32px", border: `1px solid ${C.border}`, boxShadow: C.shadow, position: "relative", overflow: "hidden", animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "40ms" }}>
@@ -155,9 +155,9 @@ export default function DebtScreen({ debts, setDebts, user, C }) {
       {/* Debt cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {debts.map((debt, i) => <DebtCard key={debt.id} debt={debt} i={i} user={user} C={C}
-          onPayment={setMakePayment}
-          onEdit={() => setEditDebt({ ...debt, originalAmount: String(debt.originalAmount), currentBalance: String(debt.currentBalance), interestRate: String(debt.interestRate), minimumPayment: String(debt.minimumPayment), dueDay: String(debt.dueDay) })}
-          onDelete={() => setDebts(ds => ds.filter(d => d.id !== debt.id))}
+          onPayment={isReadOnly ? null : setMakePayment}
+          onEdit={isReadOnly ? null : () => setEditDebt({ ...debt, originalAmount: String(debt.originalAmount), currentBalance: String(debt.currentBalance), interestRate: String(debt.interestRate), minimumPayment: String(debt.minimumPayment), dueDay: String(debt.dueDay) })}
+          onDelete={isReadOnly ? null : () => setDebts(ds => ds.filter(d => d.id !== debt.id))}
         />)}
       </div>
 

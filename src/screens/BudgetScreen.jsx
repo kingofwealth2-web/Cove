@@ -11,7 +11,7 @@ function useIsMobile() {
   return m;
 }
 
-export default function BudgetScreen({ transactions, categories, setCategories, user, C, budgetMethod, onUpdateTransaction, onDeleteTransaction }) {
+export default function BudgetScreen({ transactions, categories, setCategories, user, C, budgetMethod, onBudgetMethodChange, onUpdateTransaction, onDeleteTransaction, selectedYear, isReadOnly }) {
   const isMobile = useIsMobile();
   const [monthOffset, setMonthOffset] = useState(0);
   const [expanded, setExpanded] = useState(null);
@@ -25,8 +25,23 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
   const isEnvelope = method === "envelope";
 
   const now = new Date();
+  const currentYear = now.getFullYear();
+
+  // Jump to Dec of selected year when year changes
+  useEffect(() => {
+    if (selectedYear && selectedYear !== currentYear) {
+      const diff = (selectedYear - currentYear) * 12 + (11 - now.getMonth());
+      setMonthOffset(diff);
+    } else {
+      setMonthOffset(0);
+    }
+  }, [selectedYear]);
+
   const viewDate = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
   const monthName = viewDate.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+
+  const canGoPrev = !selectedYear || viewDate.getFullYear() > selectedYear || viewDate.getMonth() > 0;
+  const canGoNext = !isReadOnly || viewDate.getFullYear() < selectedYear || viewDate.getMonth() < 11;
 
   const monthTx = transactions.filter(t => {
     const d = new Date(t.date);
@@ -47,10 +62,11 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, animation: `slideUp 300ms ${springs.bounce}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <button onClick={() => setMonthOffset(m => m - 1)} style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${C.border}`, background: C.surfaceAlt, cursor: "pointer", color: C.text, fontSize: 16 }}>‹</button>
+          <button onClick={() => canGoPrev && setMonthOffset(m => m - 1)} style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${C.border}`, background: C.surfaceAlt, cursor: canGoPrev ? "pointer" : "default", color: canGoPrev ? C.text : C.textMuted, fontSize: 16, opacity: canGoPrev ? 1 : 0.3 }}>‹</button>
           <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 26, color: C.text, letterSpacing: "-0.5px", minWidth: 180, textAlign: "center" }}>{monthName}</h1>
-          <button onClick={() => setMonthOffset(m => m + 1)} style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${C.border}`, background: C.surfaceAlt, cursor: "pointer", color: C.text, fontSize: 16 }}>›</button>
+          <button onClick={() => canGoNext && setMonthOffset(m => m + 1)} style={{ width: 36, height: 36, borderRadius: 10, border: `1px solid ${C.border}`, background: C.surfaceAlt, cursor: canGoNext ? "pointer" : "default", color: canGoNext ? C.text : C.textMuted, fontSize: 16, opacity: canGoNext ? 1 : 0.3 }}>›</button>
         </div>
+        {!isReadOnly && (
         <div style={{ display: "flex", background: C.surfaceAlt, borderRadius: 10, padding: 3, gap: 3 }}>
           {["envelope", "flexible"].map(m => (
             <button key={m} onClick={() => onBudgetMethodChange && onBudgetMethodChange(m)} style={{
@@ -63,6 +79,7 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
             }}>{m}</button>
           ))}
         </div>
+        )}
       </div>
 
       {/* Mode description banner */}
@@ -279,7 +296,7 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
             </div>
           </div>
         ) : (
-          <button onClick={() => setAddingCat(true)} style={{
+          !isReadOnly && <button onClick={() => setAddingCat(true)} style={{
             padding: "18px", borderRadius: 18, border: `2px dashed ${C.border}`, background: "transparent",
             color: C.textMuted, fontSize: 14, cursor: "pointer", width: "100%",
             transition: `all 200ms ${springs.snap}`,

@@ -15,7 +15,7 @@ function useIsMobile() {
 
 
 
-export default function NetWorthScreen({ assets, setAssets, liabilities, setLiabilities, user, C, snapshots = [], saveNetworthSnapshot }) {
+export default function NetWorthScreen({ assets, setAssets, liabilities, setLiabilities, user, C, snapshots = [], saveNetworthSnapshot, selectedYear, isReadOnly }) {
   const isMobile = useIsMobile();
   const [editAsset, setEditAsset] = useState(null);
   const [editLiability, setEditLiability] = useState(null);
@@ -37,8 +37,11 @@ export default function NetWorthScreen({ assets, setAssets, liabilities, setLiab
     }
   }, [netWorth]);
 
-  // Build chart data from real snapshots
-  const chartData = snapshots.map(s => ({
+  // Build chart data from real snapshots, filtered by selectedYear
+  const filteredSnapshots = selectedYear
+    ? snapshots.filter(s => s.month && s.month.startsWith(String(selectedYear)))
+    : snapshots;
+  const chartData = filteredSnapshots.map(s => ({
     month: s.month.slice(0, 7), // "2026-03"
     value: s.net_worth,
     label: new Date(s.month + "-01").toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
@@ -56,7 +59,7 @@ export default function NetWorthScreen({ assets, setAssets, liabilities, setLiab
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-      <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px", animation: `slideUp 300ms ${springs.bounce}` }}>Net Worth</h1>
+      <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px" }}>Net Worth</h1>
 
       <div style={{ background: C.surface, borderRadius: 22, padding: "28px 32px", border: `1px solid ${C.border}`, boxShadow: C.shadowLg, position: "relative", overflow: "hidden", animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "40ms" }}>
         <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, background: `radial-gradient(circle, ${netWorth >= 0 ? C.incomeSoft : C.expenseSoft} 0%, transparent 70%)` }} />
@@ -126,11 +129,11 @@ export default function NetWorthScreen({ assets, setAssets, liabilities, setLiab
                   <div style={{ fontSize: 12, color: C.textMuted, textTransform: "capitalize" }}>{a.type}</div>
                 </div>
                 <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, color: C.income }}>{user.currency} {a.value.toLocaleString()}</div>
-                <button onClick={() => setEditAsset(a)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.textMuted, padding: "4px 6px" }}>✏️</button>
-                <button onClick={() => setAssets(as => as.filter(x => x.id !== a.id))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.textMuted, padding: "4px 6px" }}>🗑</button>
+                {!isReadOnly && <button onClick={() => setEditAsset(a)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.textMuted, padding: "4px 6px" }}>✏️</button>}
+                {!isReadOnly && <button onClick={() => setAssets(as => as.filter(x => x.id !== a.id))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.textMuted, padding: "4px 6px" }}>🗑</button>}
               </div>
             ))}
-            <button onClick={() => setShowAddAsset(true)} style={{ width: "100%", padding: "14px 22px", background: "none", border: "none", cursor: "pointer", color: C.accent, fontSize: 14, fontWeight: 600, textAlign: "left" }}>+ Add Asset</button>
+            {!isReadOnly && <button onClick={() => setShowAddAsset(true)} style={{ width: "100%", padding: "14px 22px", background: "none", border: "none", cursor: "pointer", color: C.accent, fontSize: 14, fontWeight: 600, textAlign: "left" }}>+ Add Asset</button>}
           </div>
         )}
       </div>
@@ -157,10 +160,10 @@ export default function NetWorthScreen({ assets, setAssets, liabilities, setLiab
                   <div style={{ fontSize: 12, color: C.textMuted, textTransform: "capitalize" }}>{l.type.replace("_", " ")}</div>
                 </div>
                 <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, color: C.expense }}>{user.currency} {l.balance.toLocaleString()}</div>
-                <button onClick={() => setLiabilities(ls => ls.filter(x => x.id !== l.id))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.textMuted, padding: "4px 6px" }}>🗑</button>
+                {!isReadOnly && <button onClick={() => setLiabilities(ls => ls.filter(x => x.id !== l.id))} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: C.textMuted, padding: "4px 6px" }}>🗑</button>}
               </div>
             ))}
-            <button onClick={() => setShowAddLiab(true)} style={{ width: "100%", padding: "14px 22px", background: "none", border: "none", cursor: "pointer", color: C.accent, fontSize: 14, fontWeight: 600, textAlign: "left" }}>+ Add Liability</button>
+            {!isReadOnly && <button onClick={() => setShowAddLiab(true)} style={{ width: "100%", padding: "14px 22px", background: "none", border: "none", cursor: "pointer", color: C.accent, fontSize: 14, fontWeight: 600, textAlign: "left" }}>+ Add Liability</button>}
           </div>
         )}
       </div>
@@ -214,3 +217,7 @@ export default function NetWorthScreen({ assets, setAssets, liabilities, setLiab
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTIFICATIONS SCREEN
+// ─────────────────────────────────────────────────────────────────────────────

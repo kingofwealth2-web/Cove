@@ -50,22 +50,22 @@ function GoalCard({ goal, i, user, C, onAddMoney, onTogglePause, onEdit, onDelet
       </div>
       <ProgressBar value={goal.current} max={goal.target} color={goal.color} delay={100 + i * 60} C={C} height={6} />
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-        <button onClick={() => onAddMoney(goal.id)} style={{
+        {onAddMoney && <button onClick={() => onAddMoney(goal.id)} style={{
           flex: 1, padding: "10px", background: goal.color + "22", color: goal.color,
           border: `1px solid ${goal.color}40`, borderRadius: 12, cursor: "pointer", fontWeight: 600, fontSize: 13,
-        }}>+ Add Money</button>
-        <button onClick={onTogglePause} style={{
+        }}>+ Add Money</button>}
+        {onTogglePause && <button onClick={onTogglePause} style={{
           padding: "10px 14px", background: C.surfaceAlt, color: C.textSub,
           border: "none", borderRadius: 12, cursor: "pointer", fontSize: 13,
-        }}>{goal.paused ? "▶" : "⏸"}</button>
-        <button onClick={onEdit} style={{ padding: "10px 12px", background: C.surfaceAlt, color: C.textMuted, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>✏️</button>
-        <button onClick={onDelete} style={{ padding: "10px 12px", background: C.expenseSoft, color: C.expense, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>🗑</button>
+        }}>{goal.paused ? "▶" : "⏸"}</button>}
+        {onEdit && <button onClick={onEdit} style={{ padding: "10px 12px", background: C.surfaceAlt, color: C.textMuted, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>✏️</button>}
+        {onDelete && <button onClick={onDelete} style={{ padding: "10px 12px", background: C.expenseSoft, color: C.expense, border: "none", borderRadius: 12, cursor: "pointer", fontSize: 14 }}>🗑</button>}
       </div>
     </div>
   );
 }
 
-export default function GoalsScreen({ goals, setGoals, user, C }) {
+export default function GoalsScreen({ goals, setGoals, user, C, selectedYear, isReadOnly }) {
   const isMobile = useIsMobile();
   const [addMoneyGoal, setAddMoneyGoal] = useState(null);
   const [addAmount, setAddAmount] = useState("");
@@ -88,7 +88,7 @@ export default function GoalsScreen({ goals, setGoals, user, C }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", animation: `slideUp 300ms ${springs.bounce}` }}>
         <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px" }}>Savings Goals</h1>
-        <button onClick={() => setShowNew(true)} style={{ padding: "10px 18px", background: C.accent, color: "white", border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 700, fontSize: 14, boxShadow: `0 4px 16px ${C.accentGlow}` }}>+ New Goal</button>
+        {!isReadOnly && <button onClick={() => setShowNew(true)} style={{ padding: "10px 18px", background: C.accent, color: "white", border: "none", borderRadius: 12, cursor: "pointer", fontWeight: 700, fontSize: 14, boxShadow: `0 4px 16px ${C.accentGlow}` }}>+ New Goal</button>}
       </div>
 
       <div style={{ background: C.surface, borderRadius: 20, padding: "22px 28px", border: `1px solid ${C.border}`, animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "40ms" }}>
@@ -97,11 +97,11 @@ export default function GoalsScreen({ goals, setGoals, user, C }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-        {goals.map((goal, i) => <GoalCard key={goal.id} goal={goal} i={i} user={user} C={C}
-          onAddMoney={setAddMoneyGoal}
-          onTogglePause={() => setGoals(gs => gs.map(g => g.id === goal.id ? { ...g, paused: !g.paused } : g))}
-          onEdit={() => setEditGoal({ ...goal, target: String(goal.target), deadline: goal.deadline || "" })}
-          onDelete={() => setGoals(gs => gs.filter(g => g.id !== goal.id))}
+        {goals.map((goal, i) => <GoalCard key={goal.id} goal={goal} i={i} user={user} C={C} isReadOnly={isReadOnly}
+          onAddMoney={isReadOnly ? null : setAddMoneyGoal}
+          onTogglePause={isReadOnly ? null : () => setGoals(gs => gs.map(g => g.id === goal.id ? { ...g, paused: !g.paused } : g))}
+          onEdit={isReadOnly ? null : () => setEditGoal({ ...goal, target: String(goal.target), deadline: goal.deadline || "" })}
+          onDelete={isReadOnly ? null : () => setGoals(gs => gs.filter(g => g.id !== goal.id))}
         />)}
       </div>
 
