@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
 import { accentOptions } from "../tokens/colors";
 import { supabase } from "../lib/supabase";
+import { hashPin } from "../lib/pinUtils";
 import Modal from "../components/ui/Modal";
 
 function useIsMobile() {
@@ -34,19 +35,95 @@ function Section({ title, children, C }) {
   );
 }
 
-function PinSetupModal({ C, onClose, onSave }) {
-  const [step, setStep] = useState("enter"); // enter | confirm
-  const [pin, setPin] = useState("");
+function PinPad({ value, onChange, onDelete, C }) {
+  const keys = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
+  return (
+    <>
+      <div style={{ display: "flex", gap: 14 }}>
+        {[0,1,2,3].map(i => (
+          <div key={i} style={{
+            width: 14, height: 14, borderRadius: "50%",
+            background: i < value.length ? C.accent : C.surfaceAlt,
+            border: `2px solid ${i < value.length ? C.accent : C.border}`,
+            transition: `all 150ms ${springs.snap}`,
+          }} />
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 64px)", gap: 12 }}>
+        {keys.map((key, i) => (
+          <button key={i}
+            onClick={() => key === "⌫" ? onDelete() : key ? onChange(key) : null}
+            disabled={!key}
+            style={{
+              width: 64, height: 64, borderRadius: "50%", border: "none",
+              cursor: key ? "pointer" : "default",
+              background: key ? C.surfaceAlt : "transparent",
+              color: key === "⌫" ? C.textMuted : C.text,
+              fontSize: key === "⌫" ? 18 : 22,
+              fontFamily: "'DM Serif Display', serif",
+              transition: `all 100ms ${springs.snap}`,
+              opacity: key ? 1 : 0,
+            }}
+            onMouseDown={e => { if (key) e.currentTarget.style.transform = "scale(0.9)"; }}
+            onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}
+          >{key}</button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// mode: "enable" | "change" | "remove"
+function PinSetupModal({ C, onClose, onSave, onRemove, mode, existingHash }) {
+  // Steps:
+  //   enable: enter → confirm
+  //   change: verify → enter → confirm
+  //   remove: verify → done
+  const initialStep = (mode === "enable") ? "enter" : "verify";
+  const [step, setStep] = useState(initialStep);
+  const [verifyPin, setVerifyPin] = useState("");
+  const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [error, setError] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
-  const keys = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
+  const stepTitles = {
+    verify: mode === "remove" ? "Confirm your PIN" : "Enter current PIN",
+    enter: "Set new PIN",
+    confirm: "Confirm new PIN",
+  };
+  const stepSubtitles = {
+    verify: "Enter your existing PIN to continue",
+    enter: "Choose a 4-digit PIN",
+    confirm: "Enter your new PIN again to confirm",
+  };
 
-  const handleKey = (key) => {
-    if (step === "enter") {
-      if (pin.length >= 4) return;
-      const next = pin + key;
-      setPin(next);
+  const currentValue = step === "verify" ? verifyPin : step === "enter" ? newPin : confirmPin;
+
+  const handleChange = async (key) => {
+    if (step === "verify") {
+      if (verifyPin.length >= 4) return;
+      const next = verifyPin + key;
+      setVerifyPin(next);
+      if (next.length === 4) {
+        setVerifying(true);
+        setTimeout(async () => {
+          const hashed = await hashPin(next);
+          if (hashed === existingHash) {
+            setError("");
+            if (mode === "remove") { onRemove(); }
+            else { setStep("enter"); }
+          } else {
+            setError("Incorrect PIN. Try again.");
+            setVerifyPin("");
+          }
+          setVerifying(false);
+        }, 200);
+      }
+    } else if (step === "enter") {
+      if (newPin.length >= 4) return;
+      const next = newPin + key;
+      setNewPin(next);
       if (next.length === 4) setTimeout(() => setStep("confirm"), 200);
     } else {
       if (confirmPin.length >= 4) return;
@@ -54,64 +131,33 @@ function PinSetupModal({ C, onClose, onSave }) {
       setConfirmPin(next);
       if (next.length === 4) {
         setTimeout(() => {
-          if (next === pin) { onSave(pin); }
-          else { setError("PINs don't match. Try again."); setConfirmPin(""); setPin(""); setStep("enter"); }
+          if (next === newPin) { onSave(newPin); }
+          else { setError("PINs don't match. Try again."); setConfirmPin(""); setNewPin(""); setStep("enter"); }
         }, 200);
       }
     }
   };
 
   const handleDelete = () => {
-    if (step === "enter") setPin(p => p.slice(0,-1));
-    else setConfirmPin(p => p.slice(0,-1));
+    if (step === "verify") setVerifyPin(p => p.slice(0, -1));
+    else if (step === "enter") setNewPin(p => p.slice(0, -1));
+    else setConfirmPin(p => p.slice(0, -1));
   };
-
-  const current = step === "enter" ? pin : confirmPin;
 
   return (
     <Modal onClose={onClose} C={C} width={360}>
       <div style={{ padding: "28px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 20, fontFamily: "'DM Serif Display', serif", color: C.text, marginBottom: 6 }}>
-            {step === "enter" ? "Set a PIN" : "Confirm PIN"}
+            {stepTitles[step]}
           </div>
           <div style={{ fontSize: 13, color: C.textMuted }}>
-            {step === "enter" ? "Choose a 4-digit PIN to lock the app" : "Enter your PIN again to confirm"}
+            {stepSubtitles[step]}
           </div>
         </div>
-
-        <div style={{ display: "flex", gap: 14 }}>
-          {[0,1,2,3].map(i => (
-            <div key={i} style={{
-              width: 14, height: 14, borderRadius: "50%",
-              background: i < current.length ? C.accent : C.surfaceAlt,
-              border: `2px solid ${i < current.length ? C.accent : C.border}`,
-              transition: `all 150ms ${springs.snap}`,
-            }} />
-          ))}
-        </div>
-
-        {error && <div style={{ fontSize: 13, color: C.expense, textAlign: "center" }}>{error}</div>}
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 64px)", gap: 12 }}>
-          {keys.map((key, i) => (
-            <button key={i} onClick={() => key === "⌫" ? handleDelete() : key ? handleKey(key) : null}
-              disabled={!key}
-              style={{
-                width: 64, height: 64, borderRadius: "50%", border: "none",
-                cursor: key ? "pointer" : "default",
-                background: key ? C.surfaceAlt : "transparent",
-                color: key === "⌫" ? C.textMuted : C.text,
-                fontSize: key === "⌫" ? 18 : 22,
-                fontFamily: "'DM Serif Display', serif",
-                transition: `all 100ms ${springs.snap}`,
-                opacity: key ? 1 : 0,
-              }}
-              onMouseDown={e => { if (key) e.currentTarget.style.transform = "scale(0.9)"; }}
-              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}
-            >{key}</button>
-          ))}
-        </div>
+        <PinPad value={currentValue} onChange={handleChange} onDelete={handleDelete} C={C} />
+        {error && <div style={{ fontSize: 13, color: C.expense, textAlign: "center", marginTop: -12 }}>{error}</div>}
+        {verifying && <div style={{ fontSize: 13, color: C.textMuted }}>Checking…</div>}
       </div>
     </Modal>
   );
@@ -127,7 +173,7 @@ export default function SettingsScreen({
 }) {
   const isMobile = useIsMobile();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [showPinSetup, setShowPinSetup] = useState(false);
+  const [pinModal, setPinModal] = useState(null); // null | "enable" | "change" | "remove"
   const [emailInput, setEmailInput] = useState(session?.user?.email || "");
   const [emailStatus, setEmailStatus] = useState("");
   const [importStatus, setImportStatus] = useState("");
@@ -141,7 +187,7 @@ export default function SettingsScreen({
     setTimeout(() => setEmailStatus(""), 4000);
   };
 
-  const handleRemovePin = () => { onSetPin(null); };
+  const handleRemovePin = () => { onSetPin(null); setPinModal(null); };
 
   const currentYear = new Date().getFullYear();
   const exportYear = selectedYear || currentYear;
@@ -318,11 +364,11 @@ export default function SettingsScreen({
           </div>
           {pinHash ? (
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setShowPinSetup(true)} style={{ padding: "8px 14px", borderRadius: 10, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 13, cursor: "pointer" }}>Change</button>
-              <button onClick={handleRemovePin} style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: C.expense + "22", color: C.expense, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Remove</button>
+              <button onClick={() => setPinModal("change")} style={{ padding: "8px 14px", borderRadius: 10, border: `1px solid ${C.border}`, background: "transparent", color: C.textSub, fontSize: 13, cursor: "pointer" }}>Change</button>
+              <button onClick={() => setPinModal("remove")} style={{ padding: "8px 14px", borderRadius: 10, border: "none", background: C.expense + "22", color: C.expense, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Remove</button>
             </div>
           ) : (
-            <button onClick={() => setShowPinSetup(true)} style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: C.accent, color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Enable</button>
+            <button onClick={() => setPinModal("enable")} style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: C.accent, color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Enable</button>
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0" }}>
@@ -398,8 +444,15 @@ export default function SettingsScreen({
         </div>
       </Section>
 
-      {showPinSetup && (
-        <PinSetupModal C={C} onClose={() => setShowPinSetup(false)} onSave={(pin) => { onSetPin(pin); setShowPinSetup(false); }} />
+      {pinModal && (
+        <PinSetupModal
+          C={C}
+          mode={pinModal}
+          existingHash={pinHash}
+          onClose={() => setPinModal(null)}
+          onSave={(pin) => { onSetPin(pin); setPinModal(null); }}
+          onRemove={handleRemovePin}
+        />
       )}
     </div>
   );
