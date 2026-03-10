@@ -200,13 +200,14 @@ function SafeToSpendInfo({ totalIncome, totalSpent, safeToSpend, currency, C, on
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export default function Dashboard({ transactions, categories, user, C, onAdd, onDeleteTransaction, onUpdateTransaction, onBulkDeleteTransactions, selectedYear, mobileSearchQuery, mobileSearchActive }) {
+export default function Dashboard({ transactions, categories, bills, goals, user, C, onAdd, onDeleteTransaction, onUpdateTransaction, onBulkDeleteTransactions, selectedYear, mobileSearchQuery, mobileSearchActive }) {
   const isMobile = useIsMobile();
   const now = new Date();
   const [editTx, setEditTx] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [checklistDismissed, setChecklistDismissed] = useState(false);
   const [installable, setInstallable] = useState(!!window.__pwaPrompt);
   const [installBannerDismissed, setInstallBannerDismissed] = useState(false);
 
@@ -318,6 +319,89 @@ export default function Dashboard({ transactions, categories, user, C, onAdd, on
           }}>✕</button>
         </div>
       )}
+
+      {/* ── Getting Started checklist ─────────────────────────────────────── */}
+      {(() => {
+        const tasks = [
+          { id: "income",  label: "Log your first income",    hint: "Tap + and choose Income",        done: transactions.some(t => t.type === "income") },
+          { id: "expense", label: "Log your first expense",   hint: "Tap + and choose Expense",       done: transactions.some(t => t.type === "expense") },
+          { id: "budget",  label: "Set a category budget",    hint: "Go to Budget → tap a category",  done: categories.some(c => c.budget > 0) },
+          { id: "bill",    label: "Add a recurring bill",     hint: "Go to Bills → Add Bill",         done: (bills || []).length > 0 },
+          { id: "goal",    label: "Create a savings goal",    hint: "Go to Goals → New Goal",         done: (goals || []).length > 0 },
+        ];
+        const completed = tasks.filter(t => t.done).length;
+        const allDone = completed === tasks.length;
+        if (allDone || checklistDismissed) return null;
+        const pct = Math.round(completed / tasks.length * 100);
+
+        return (
+          <div style={{
+            background: C.surface, borderRadius: 22, border: `1px solid ${C.border}`,
+            padding: "22px 24px", boxShadow: C.shadow,
+            animation: `slideUp 300ms ${springs.bounce} both`,
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 3 }}>
+                  Get started with Cove
+                </div>
+                <div style={{ fontSize: 13, color: C.textMuted }}>
+                  {completed} of {tasks.length} done · {pct}% complete
+                </div>
+              </div>
+              <button onClick={() => setChecklistDismissed(true)} style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: C.textMuted, fontSize: 16, padding: "0 0 0 12px", lineHeight: 1,
+              }}>✕</button>
+            </div>
+
+            {/* Progress bar */}
+            <div style={{ height: 5, borderRadius: 99, background: C.surfaceAlt, marginBottom: 18, overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 99,
+                width: `${pct}%`,
+                background: `linear-gradient(90deg, ${C.accent}, ${C.income})`,
+                transition: "width 600ms ease",
+              }} />
+            </div>
+
+            {/* Task list */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {tasks.map(task => (
+                <div key={task.id} style={{
+                  display: "flex", alignItems: "center", gap: 13,
+                  padding: "10px 14px", borderRadius: 14,
+                  background: task.done ? C.incomeSoft || C.accentSoft : C.surfaceAlt,
+                  border: `1px solid ${task.done ? C.income + "30" : "transparent"}`,
+                  transition: "all 300ms ease",
+                }}>
+                  {/* Checkbox */}
+                  <div style={{
+                    width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                    background: task.done ? C.income : "transparent",
+                    border: `2px solid ${task.done ? C.income : C.border}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "all 200ms ease",
+                  }}>
+                    {task.done && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: 14, fontWeight: 600,
+                      color: task.done ? C.textMuted : C.text,
+                      textDecoration: task.done ? "line-through" : "none",
+                    }}>{task.label}</div>
+                    {!task.done && (
+                      <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{task.hint}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Greeting */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", animation: `slideUp 300ms ${springs.bounce}` }}>

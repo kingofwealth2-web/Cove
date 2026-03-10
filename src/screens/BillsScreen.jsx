@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
 import Modal from "../components/ui/Modal";
 import Label from "../components/ui/Label";
+import EmptyState from "../components/ui/EmptyState";
 
 function useIsMobile() {
   const [m, setM] = useState(window.innerWidth < 768);
@@ -93,7 +94,17 @@ export default function BillsScreen({ bills, setBills, user, C, selectedYear, is
           {!isReadOnly && <button onClick={() => setShowAdd(true)} style={{ padding: "8px 16px", background: C.accentSoft, color: C.accent, border: "none", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>+ Add Bill</button>}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {bills.map((bill, i) => {
+          {bills.length === 0 ? (
+            <EmptyState
+              icon="📋"
+              title="No bills added yet"
+              description="Track your rent, utilities, subscriptions and any recurring payments so you never miss a due date."
+              action="+ Add Your First Bill"
+              onAction={() => setShowAdd(true)}
+              C={C}
+              isReadOnly={isReadOnly}
+            />
+          ) : bills.map((bill, i) => {
             const overdue = bill.dueDay < now.getDate() && !bill.paid;
             return (
               <div key={bill.id} style={{

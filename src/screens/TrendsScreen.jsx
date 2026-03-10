@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { springs } from "../tokens/springs";
+import EmptyState from "../components/ui/EmptyState";
 
 function useIsMobile() {
   const [m, setM] = useState(window.innerWidth < 768);
@@ -147,11 +148,12 @@ export default function TrendsScreen({ transactions, categories, user, C, select
       </div>
 
       {empty ? (
-        <div style={{ background: C.surface, borderRadius: 20, padding: "48px 24px", border: `1px solid ${C.border}`, textAlign: "center" }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 8 }}>No data yet</div>
-          <div style={{ fontSize: 14, color: C.textMuted }}>Add some transactions to see your trends.</div>
-        </div>
+        <EmptyState
+          icon="📊"
+          title="No data to show yet"
+          description="Add a few income and expense transactions and Cove will chart your monthly and weekly spending patterns here."
+          C={C}
+        />
       ) : view === "weekly" ? (
         <>
           <div style={{ background: C.surface, borderRadius: 20, padding: "24px", border: `1px solid ${C.border}`, boxShadow: C.shadow, animation: `slideUp 300ms ${springs.bounce} both` }}>

@@ -5,6 +5,7 @@ import GoalRing from "../components/ui/GoalRing";
 import ProgressBar from "../components/ui/ProgressBar";
 import Modal from "../components/ui/Modal";
 import Label from "../components/ui/Label";
+import EmptyState from "../components/ui/EmptyState";
 
 function useIsMobile() {
   const [m, setM] = useState(window.innerWidth < 768);
@@ -138,7 +139,17 @@ export default function GoalsScreen({ goals, setGoals, user, C, selectedYear, is
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-        {goals.map((goal, i) => <GoalCard key={goal.id} goal={goal} i={i} user={user} C={C} isReadOnly={isReadOnly}
+        {goals.length === 0 ? (
+          <EmptyState
+            icon="🎯"
+            title="No savings goals yet"
+            description="Set a target — a holiday, emergency fund, new laptop — and Cove tracks your progress every time you add money."
+            action="+ Create First Goal"
+            onAction={() => setShowNew(true)}
+            C={C}
+            isReadOnly={isReadOnly}
+          />
+        ) : goals.map((goal, i) => <GoalCard key={goal.id} goal={goal} i={i} user={user} C={C} isReadOnly={isReadOnly}
           onAddMoney={isReadOnly ? null : setAddMoneyGoal}
           onTogglePause={isReadOnly ? null : () => setGoals(gs => gs.map(g => g.id === goal.id ? { ...g, paused: !g.paused } : g))}
           onEdit={isReadOnly ? null : () => setEditGoal({ ...goal, target: String(goal.target), deadline: goal.deadline || "" })}

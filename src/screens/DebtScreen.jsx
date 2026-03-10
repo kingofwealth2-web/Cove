@@ -4,6 +4,7 @@ import { useCountUp } from "../hooks/useCountUp";
 import ProgressBar from "../components/ui/ProgressBar";
 import Modal from "../components/ui/Modal";
 import Label from "../components/ui/Label";
+import EmptyState from "../components/ui/EmptyState";
 
 function useIsMobile() {
   const [m, setM] = useState(window.innerWidth < 768);
@@ -154,7 +155,17 @@ export default function DebtScreen({ debts, setDebts, user, C, selectedYear, isR
 
       {/* Debt cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {debts.map((debt, i) => <DebtCard key={debt.id} debt={debt} i={i} user={user} C={C}
+        {debts.length === 0 ? (
+          <EmptyState
+            icon="💳"
+            title="No debts tracked"
+            description="Add your loans, credit cards or any money you owe. Cove will show you a payoff plan and track your progress."
+            action="+ Add Your First Debt"
+            onAction={() => setShowAdd(true)}
+            C={C}
+            isReadOnly={isReadOnly}
+          />
+        ) : debts.map((debt, i) => <DebtCard key={debt.id} debt={debt} i={i} user={user} C={C}
           onPayment={isReadOnly ? null : setMakePayment}
           onEdit={isReadOnly ? null : () => setEditDebt({ ...debt, originalAmount: String(debt.originalAmount), currentBalance: String(debt.currentBalance), interestRate: String(debt.interestRate), minimumPayment: String(debt.minimumPayment), dueDay: String(debt.dueDay) })}
           onDelete={isReadOnly ? null : () => setDebts(ds => ds.filter(d => d.id !== debt.id))}

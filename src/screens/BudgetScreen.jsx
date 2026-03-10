@@ -4,6 +4,7 @@ import { useCountUp } from "../hooks/useCountUp";
 import ProgressBar from "../components/ui/ProgressBar";
 import Label from "../components/ui/Label";
 import Modal from "../components/ui/Modal";
+import EmptyState from "../components/ui/EmptyState";
 
 function useIsMobile() {
   const [m, setM] = useState(window.innerWidth < 768);
@@ -111,6 +112,15 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
 
       {/* Category rows */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {expenseCategories.length > 0 && !expenseCategories.some(c => c.budget > 0) && !isReadOnly && (
+          <div style={{
+            padding: "16px 20px", borderRadius: 16,
+            background: C.accentSoft, border: `1px solid ${C.accent}30`,
+            fontSize: 13, color: C.accent, lineHeight: 1.6,
+          }}>
+            💡 <strong>Tip:</strong> Tap any category below to set a monthly budget. Once set, Cove tracks how much you've spent against each limit.
+          </div>
+        )}
         {expenseCategories.map((cat, i) => {
           const catTx = monthTx.filter(t => t.type === "expense" && t.categoryId === cat.id);
           const spent = catTx.reduce((s, t) => s + t.amount, 0);
