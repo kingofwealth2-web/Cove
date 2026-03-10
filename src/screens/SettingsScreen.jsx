@@ -186,6 +186,21 @@ export default function SettingsScreen({
   const [fxError, setFxError] = useState("");
   const [availableCurrencies, setAvailableCurrencies] = useState([]);
   const [bioStatus, setBioStatus] = useState(""); // "" | "enabling" | "error:<msg>"
+  const [installable, setInstallable] = useState(!!window.__pwaPrompt);
+  const [installDone, setInstallDone] = useState(false);
+
+  useEffect(() => {
+    const check = () => setInstallable(!!window.__pwaPrompt);
+    window.addEventListener("beforeinstallprompt", check);
+    return () => window.removeEventListener("beforeinstallprompt", check);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!window.__pwaPrompt) return;
+    window.__pwaPrompt.prompt();
+    const { outcome } = await window.__pwaPrompt.userChoice;
+    if (outcome === "accepted") { setInstallDone(true); window.__pwaPrompt = null; }
+  };
 
   const handleEmailSave = async () => {
     if (!emailInput || emailInput === session?.user?.email) return;
@@ -351,6 +366,33 @@ export default function SettingsScreen({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 640 }}>
       <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 30, color: C.text, letterSpacing: "-0.5px" }}>Settings</h1>
+
+      {/* Install App — Android Chrome */}
+      {(installable || installDone) && (
+        <div style={{
+          background: `linear-gradient(135deg, ${C.accent}22, ${C.accent}08)`,
+          border: `1px solid ${C.accent}40`, borderRadius: 18,
+          padding: "18px 22px", display: "flex", alignItems: "center", gap: 16,
+        }}>
+          <div style={{ fontSize: 32 }}>📲</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 3 }}>
+              {installDone ? "Cove installed! ✓" : "Install Cove on your device"}
+            </div>
+            <div style={{ fontSize: 13, color: C.textMuted }}>
+              {installDone ? "Find Cove on your home screen." : "Add to your home screen for the best experience — works offline too."}
+            </div>
+          </div>
+          {!installDone && (
+            <button onClick={handleInstall} style={{
+              padding: "10px 18px", borderRadius: 12, border: "none",
+              background: C.accent, color: "white",
+              fontSize: 14, fontWeight: 700, cursor: "pointer",
+              boxShadow: `0 4px 16px ${C.accentGlow}`, whiteSpace: "nowrap",
+            }}>Install</button>
+          )}
+        </div>
+      )}
 
       <Section title="Profile" C={C}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
