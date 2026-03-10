@@ -247,11 +247,16 @@ export default function App() {
                   <div style={{
                     position: "absolute", left: 52,
                     fontSize: 12, color: C.warning, fontWeight: 600,
-                    display: "flex", alignItems: "center", gap: 6,
+                    display: "flex", alignItems: "center", gap: 8,
                     background: C.warning + "14", border: `1px solid ${C.warning + "33"}`,
                     borderRadius: 8, padding: "4px 10px",
                   }}>
-                    📅 Read Only — switch to {currentYear} to make changes
+                    📅 Read Only
+                    <button onClick={() => setSelectedYear(currentYear)} style={{
+                      background: C.warning, color: "white", border: "none",
+                      borderRadius: 6, padding: "2px 8px", fontSize: 11,
+                      fontWeight: 700, cursor: "pointer",
+                    }}>↩ {currentYear}</button>
                   </div>
                 )}
                 <YearBar {...yearBarProps} />

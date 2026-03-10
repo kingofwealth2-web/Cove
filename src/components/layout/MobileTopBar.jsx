@@ -75,10 +75,15 @@ export default function MobileTopBar({ onMenuOpen, onAdd, C, notifications, them
       {isReadOnly && (
         <div style={{
           padding: "4px 16px 8px",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           fontSize: 11, fontWeight: 600, color: C.warning,
-          textAlign: "center", letterSpacing: "0.03em",
         }}>
           📅 {yearBarProps?.selectedYear} — Read Only
+          <button onClick={() => yearBarProps?.onYearChange(new Date().getFullYear())} style={{
+            background: C.warning, color: "white", border: "none",
+            borderRadius: 6, padding: "2px 8px", fontSize: 11,
+            fontWeight: 700, cursor: "pointer",
+          }}>↩ Now</button>
         </div>
       )}
     </div>
