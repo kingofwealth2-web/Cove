@@ -25,6 +25,7 @@ import NetWorthScreen from "./screens/NetWorthScreen";
 import RecurringScreen from "./screens/RecurringScreen";
 import NotificationsScreen from "./screens/NotificationsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
+import AskCoveScreen from "./screens/AskCoveScreen";
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -262,6 +263,7 @@ export default function App() {
     { id: "goals",         el: <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} {...readOnlyProps} /> },
     { id: "debt",          el: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} {...readOnlyProps} /> },
     { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} {...readOnlyProps} /> },
+    { id: "ask",           el: <AskCoveScreen transactions={transactions} categories={categories} goals={goals} debts={debts} bills={bills} user={user} C={C} /> },
     { id: "notifications", el: <NotificationsScreen notifications={mergedNotifications} setNotifications={setNotifications} C={C} /> },
     { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentialId={biometricCredentialId} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} /> },
   ];

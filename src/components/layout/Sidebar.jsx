@@ -3,6 +3,7 @@ import { springs } from "../../tokens/springs";
 
 const NAV = [
   { id: "home",      label: "Home",        emoji: "🏠" },
+  { id: "ask",       label: "Ask Cove",    emoji: "✦",  special: true },
   { id: "budget",    label: "Budget",      emoji: "📊" },
   { id: "trends",    label: "Trends",      emoji: "📈" },
   { id: "recurring", label: "Recurring",   emoji: "🔄" },
@@ -154,6 +155,7 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
       <nav style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
         {NAV.map((item, i) => {
           const isActive = active === item.id;
+          const isSpecial = item.special;
           return (
             <button key={item.id} onClick={() => handleNav(item.id)}
               title={collapsed ? item.label : ""}
@@ -162,16 +164,19 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
                 padding: collapsed ? "10px 0" : "10px 12px",
                 justifyContent: collapsed ? "center" : "flex-start",
                 borderRadius: 12, border: "none", cursor: "pointer",
-                background: isActive ? C.accentSoft : "transparent",
-                color: isActive ? C.accent : C.textSub,
-                fontSize: 14, fontWeight: isActive ? 600 : 400, textAlign: "left",
+                background: isActive
+                  ? (isSpecial ? `linear-gradient(135deg, ${C.accent}30, ${C.accentDark || C.accent}20)` : C.accentSoft)
+                  : (isSpecial ? `linear-gradient(135deg, ${C.accent}12, ${C.accentDark || C.accent}08)` : "transparent"),
+                color: isActive ? C.accent : (isSpecial ? C.accent : C.textSub),
+                fontSize: 14, fontWeight: isActive || isSpecial ? 600 : 400, textAlign: "left",
                 transition: `all 200ms ${springs.snap}`,
                 width: "100%",
+                border: isSpecial ? `1px solid ${C.accent}25` : "none",
               }}
-              onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = C.surfaceHover; e.currentTarget.style.color = C.text; }}}
-              onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.textSub; }}}
+              onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = isSpecial ? `linear-gradient(135deg, ${C.accent}22, ${C.accentDark || C.accent}14)` : C.surfaceHover; e.currentTarget.style.color = isSpecial ? C.accent : C.text; }}}
+              onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = isSpecial ? `linear-gradient(135deg, ${C.accent}12, ${C.accentDark || C.accent}08)` : "transparent"; e.currentTarget.style.color = isSpecial ? C.accent : C.textSub; }}}
             >
-              <span style={{ fontSize: 17, flexShrink: 0 }}>{item.emoji}</span>
+              <span style={{ fontSize: isSpecial ? 15 : 17, flexShrink: 0, fontStyle: isSpecial ? "normal" : "normal" }}>{item.emoji}</span>
               {!collapsed && item.label}
               {!collapsed && isActive && <div style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: C.accent, boxShadow: `0 0 8px ${C.accent}` }} />}
             </button>
