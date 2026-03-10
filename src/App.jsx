@@ -26,6 +26,8 @@ import RecurringScreen from "./screens/RecurringScreen";
 import NotificationsScreen from "./screens/NotificationsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import AskCoveScreen from "./screens/AskCoveScreen";
+import { usePWAInstall } from "./hooks/usePWAInstall";
+import InstallBanner from "./components/ui/InstallBanner";
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -41,6 +43,7 @@ export default function App() {
   const [pinLocked, setPinLocked] = useState(false);
   const [notifReadIds, setNotifReadIds] = useState(new Set());
   const [notifDismissedIds, setNotifDismissedIds] = useState(new Set());
+  const { showBanner, install, dismiss } = usePWAInstall(); 
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -338,6 +341,7 @@ export default function App() {
           </main>
         </div>
       </div>
+      {showBanner && <InstallBanner onInstall={install} onDismiss={dismiss} C={C} />}
       {showAdd && !isReadOnly && <AddTransactionPanel onClose={() => setShowAdd(false)} onSave={handleAddTransaction} categories={categories} user={user} C={C} fxRates={fxRates} templates={templates} onSaveTemplates={saveTemplates} />}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>
