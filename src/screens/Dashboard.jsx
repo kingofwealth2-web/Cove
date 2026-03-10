@@ -200,7 +200,7 @@ function SafeToSpendInfo({ totalIncome, totalSpent, safeToSpend, currency, C, on
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export default function Dashboard({ transactions, categories, user, C, onAdd, onDeleteTransaction, onUpdateTransaction, onBulkDeleteTransactions, selectedYear }) {
+export default function Dashboard({ transactions, categories, user, C, onAdd, onDeleteTransaction, onUpdateTransaction, onBulkDeleteTransactions, selectedYear, mobileSearchQuery, mobileSearchActive }) {
   const isMobile = useIsMobile();
   const now = new Date();
   const [editTx, setEditTx] = useState(null);
@@ -224,11 +224,17 @@ export default function Dashboard({ transactions, categories, user, C, onAdd, on
     setInstallable(false);
   };
 
-  // Search & filter state
+  // Desktop search & filter state
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState("all"); // all | income | expense
+  const [filterType, setFilterType] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [showSearch, setShowSearch] = useState(false);
+
+  // On mobile, topbar search takes over; on desktop, internal search
+  const activeQuery = isMobile && mobileSearchActive ? (mobileSearchQuery || "") : searchQuery;
+  const showingSearch = isMobile
+    ? (mobileSearchActive && !!mobileSearchQuery)
+    : (showSearch || searchQuery || filterType !== "all" || filterCat !== "all");
 
   const monthTx = transactions.filter(t => {
     const d = new Date(t.date);
@@ -261,8 +267,8 @@ export default function Dashboard({ transactions, categories, user, C, onAdd, on
     let txs = allSorted;
     if (filterType !== "all") txs = txs.filter(t => t.type === filterType);
     if (filterCat !== "all") txs = txs.filter(t => t.categoryId === filterCat);
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+    if (activeQuery.trim()) {
+      const q = activeQuery.toLowerCase();
       txs = txs.filter(t => {
         const cat = categories.find(c => c.id === t.categoryId);
         return (
@@ -273,9 +279,8 @@ export default function Dashboard({ transactions, categories, user, C, onAdd, on
       });
     }
     return txs;
-  }, [allSorted, filterType, filterCat, searchQuery, categories]);
+  }, [allSorted, filterType, filterCat, activeQuery, categories]);
 
-  const showingSearch = showSearch || searchQuery || filterType !== "all" || filterCat !== "all";
   const displayTx = showingSearch ? filtered : allSorted.slice(0, 8);
 
   const formatDate = (dateStr) => {
@@ -441,13 +446,15 @@ export default function Dashboard({ transactions, categories, user, C, onAdd, on
                   </>
                 ) : (
                   <>
-                    <button onClick={() => { setShowSearch(s => !s); if (showSearch) { setSearchQuery(""); setFilterType("all"); setFilterCat("all"); }}} style={{
-                      background: showingSearch ? C.accentSoft : C.surfaceAlt,
-                      color: showingSearch ? C.accent : C.textSub,
-                      border: "none", borderRadius: 10, padding: "7px 14px",
-                      fontSize: 13, fontWeight: 600, cursor: "pointer",
-                      transition: `all 200ms ${springs.snap}`,
-                    }}>🔍 {showingSearch ? "Clear" : "Search"}</button>
+                    {!isMobile && (
+                      <button onClick={() => { setShowSearch(s => !s); if (showSearch) { setSearchQuery(""); setFilterType("all"); setFilterCat("all"); }}} style={{
+                        background: showingSearch ? C.accentSoft : C.surfaceAlt,
+                        color: showingSearch ? C.accent : C.textSub,
+                        border: "none", borderRadius: 10, padding: "7px 14px",
+                        fontSize: 13, fontWeight: 600, cursor: "pointer",
+                        transition: `all 200ms ${springs.snap}`,
+                      }}>🔍 {showingSearch ? "Clear" : "Search"}</button>
+                    )}
                     <button onClick={() => setSelectMode(true)} style={{
                       background: C.surfaceAlt, color: C.textSub,
                       border: "none", borderRadius: 10, padding: "7px 14px",
@@ -458,8 +465,8 @@ export default function Dashboard({ transactions, categories, user, C, onAdd, on
               </div>
             </div>
 
-            {/* Search / filter bar */}
-            {showingSearch && (
+            {/* Search / filter bar — desktop only (mobile uses topbar) */}
+            {!isMobile && showingSearch && (
               <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14, animation: `slideUp 200ms ${springs.snap}` }}>
                 <input
                   autoFocus
@@ -496,6 +503,13 @@ export default function Dashboard({ transactions, categories, user, C, onAdd, on
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Mobile search active label */}
+            {isMobile && mobileSearchActive && mobileSearchQuery && (
+              <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 8 }}>
+                Results for <strong style={{ color: C.text }}>"{mobileSearchQuery}"</strong> — {filtered.length} found
               </div>
             )}
 

@@ -16,6 +16,12 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showTemplates, setShowTemplates] = useState(false);
 
+  // Split state
+  const [splitMode, setSplitMode] = useState(false);
+  const [splitCatA, setSplitCatA] = useState(null);
+  const [splitCatB, setSplitCatB] = useState(null);
+  const [splitPct, setSplitPct] = useState(50); // % going to catA
+
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handler);
@@ -59,7 +65,7 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
     else setAmount(a => a + k);
   };
 
-  const canSave = parsedAmount > 0 && catId;
+  const canSave = parsedAmount > 0 && (splitMode ? (splitCatA && splitCatB && splitCatA !== splitCatB) : catId);
 
   const applyTemplate = (tpl) => {
     setType(tpl.type);
@@ -88,15 +94,37 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
   };
 
   const handleSave = () => {
-    onSave({
-      id: `t${Date.now()}`,
-      categoryId: catId,
-      amount: isForeign ? baseAmount : parsedAmount,
-      type, note, date, isRecurring: recurring,
-      originalCurrency: isForeign ? selectedCurrency : null,
-      originalAmount: isForeign ? parsedAmount : null,
-      exchangeRate: isForeign ? rate : 1,
-    });
+    const totalBase = isForeign ? baseAmount : parsedAmount;
+    if (splitMode && splitCatA && splitCatB) {
+      const amtA = parseFloat((totalBase * splitPct / 100).toFixed(2));
+      const amtB = parseFloat((totalBase - amtA).toFixed(2));
+      const catAObj = categories.find(c => c.id === splitCatA);
+      const catBObj = categories.find(c => c.id === splitCatB);
+      onSave({
+        id: `t${Date.now()}`, categoryId: splitCatA,
+        amount: amtA, type, note: note ? `${note} (split ${splitPct}%)` : `Split with ${catBObj?.name || ""} (${splitPct}%)`,
+        date, isRecurring: false,
+        originalCurrency: isForeign ? selectedCurrency : null,
+        originalAmount: isForeign ? parsedAmount * splitPct / 100 : null,
+        exchangeRate: isForeign ? rate : 1,
+      });
+      onSave({
+        id: `t${Date.now() + 1}`, categoryId: splitCatB,
+        amount: amtB, type, note: note ? `${note} (split ${100 - splitPct}%)` : `Split with ${catAObj?.name || ""} (${100 - splitPct}%)`,
+        date, isRecurring: false,
+        originalCurrency: isForeign ? selectedCurrency : null,
+        originalAmount: isForeign ? parsedAmount * (100 - splitPct) / 100 : null,
+        exchangeRate: isForeign ? rate : 1,
+      });
+    } else {
+      onSave({
+        id: `t${Date.now()}`, categoryId: catId,
+        amount: totalBase, type, note, date, isRecurring: recurring,
+        originalCurrency: isForeign ? selectedCurrency : null,
+        originalAmount: isForeign ? parsedAmount : null,
+        exchangeRate: isForeign ? rate : 1,
+      });
+    }
     onClose();
   };
 
@@ -225,53 +253,125 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
         </div>
       )}
 
-      {/* Category */}
+      {/* Category — normal or split */}
       <div style={{ padding: "16px 28px", borderBottom: `1px solid ${C.border}` }}>
-        <Label C={C} style={{ marginBottom: 10 }}>Category</Label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {categories
-            .filter(cat => type === "income" ? cat.is_income : !cat.is_income)
-            .map(cat => (
-              <button key={cat.id} onClick={() => setCatId(cat.id)} style={{
-                padding: "7px 13px", borderRadius: 99,
-                border: `1px solid ${catId === cat.id ? cat.color + "60" : "transparent"}`,
-                background: catId === cat.id ? cat.color + "22" : C.surfaceAlt,
-                color: catId === cat.id ? cat.color : C.textSub,
-                fontSize: 13, fontWeight: 500, cursor: "pointer",
-                display: "flex", alignItems: "center", gap: 5,
-                transition: `all 200ms ${springs.snap}`,
-              }}>
-                <span>{cat.icon}</span>{cat.name}
-              </button>
-            ))}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <Label C={C}>Category</Label>
+          {type === "expense" && (
+            <button onClick={() => { setSplitMode(s => !s); setSplitCatA(null); setSplitCatB(null); setSplitPct(50); }} style={{
+              padding: "5px 12px", borderRadius: 99, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+              background: splitMode ? C.accent : C.surfaceAlt,
+              color: splitMode ? "white" : C.textSub,
+              transition: `all 150ms ${springs.snap}`,
+            }}>⚡ Split</button>
+          )}
         </div>
+
+        {splitMode ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {/* Two category pickers */}
+            {[
+              { label: "First category", val: splitCatA, set: setSplitCatA, pct: splitPct },
+              { label: "Second category", val: splitCatB, set: setSplitCatB, pct: 100 - splitPct },
+            ].map(({ label, val, set, pct }) => {
+              const totalBase = isForeign ? baseAmount : parsedAmount;
+              const catAmt = parseFloat((totalBase * pct / 100).toFixed(2));
+              return (
+                <div key={label}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600 }}>{label}</span>
+                    {parsedAmount > 0 && (
+                      <span style={{ fontSize: 12, fontWeight: 700, color: C.accent, fontFamily: "'DM Mono', monospace" }}>
+                        {user.currency} {catAmt.toLocaleString()} ({pct}%)
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                    {categories.filter(c => !c.is_income).map(cat => (
+                      <button key={cat.id} onClick={() => set(cat.id)} style={{
+                        padding: "6px 12px", borderRadius: 99,
+                        border: `1px solid ${val === cat.id ? cat.color + "60" : "transparent"}`,
+                        background: val === cat.id ? cat.color + "22" : C.surfaceAlt,
+                        color: val === cat.id ? cat.color : C.textSub,
+                        fontSize: 12, fontWeight: 500, cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: 4,
+                        opacity: (label === "Second category" && cat.id === splitCatA) ? 0.3 : 1,
+                        transition: `all 150ms ${springs.snap}`,
+                      }}>
+                        <span>{cat.icon}</span>{cat.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Split slider */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: C.textMuted }}>Split ratio</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.text, fontFamily: "'DM Mono', monospace" }}>{splitPct}% / {100 - splitPct}%</span>
+              </div>
+              <input type="range" min={5} max={95} step={5} value={splitPct}
+                onChange={e => setSplitPct(Number(e.target.value))}
+                style={{ width: "100%", accentColor: C.accent, cursor: "pointer" }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                <span style={{ fontSize: 11, color: C.textMuted }}>{categories.find(c => c.id === splitCatA)?.icon} {categories.find(c => c.id === splitCatA)?.name || "Category 1"}</span>
+                <span style={{ fontSize: 11, color: C.textMuted }}>{categories.find(c => c.id === splitCatB)?.name || "Category 2"} {categories.find(c => c.id === splitCatB)?.icon}</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {categories
+              .filter(cat => type === "income" ? cat.is_income : !cat.is_income)
+              .map(cat => (
+                <button key={cat.id} onClick={() => setCatId(cat.id)} style={{
+                  padding: "7px 13px", borderRadius: 99,
+                  border: `1px solid ${catId === cat.id ? cat.color + "60" : "transparent"}`,
+                  background: catId === cat.id ? cat.color + "22" : C.surfaceAlt,
+                  color: catId === cat.id ? cat.color : C.textSub,
+                  fontSize: 13, fontWeight: 500, cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 5,
+                  transition: `all 200ms ${springs.snap}`,
+                }}>
+                  <span>{cat.icon}</span>{cat.name}
+                </button>
+              ))}
+          </div>
+        )}
       </div>
 
       {/* Note, date, recurring */}
       <div style={{ padding: "14px 28px", borderBottom: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 10 }}>
-        <input value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note..."
+        <input value={note} onChange={e => setNote(e.target.value)} placeholder={splitMode ? "Add a note (applies to both splits)..." : "Add a note..."}
           style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 14px", fontSize: 14, color: C.text, outline: "none", width: "100%" }} />
         <input type="date" value={date} onChange={e => setDate(e.target.value)}
           style={{ background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "11px 14px", fontSize: 14, color: C.text, outline: "none", width: "100%", colorScheme: "dark" }} />
-        <button onClick={() => setRecurring(r => !r)} style={{
-          display: "flex", alignItems: "center", gap: 10, background: "none", border: "none",
-          cursor: "pointer", color: C.textSub, fontSize: 14, padding: 0, textAlign: "left",
-        }}>
-          <div style={{ width: 40, height: 24, borderRadius: 99, background: recurring ? C.accent : C.surfaceAlt, position: "relative", transition: `background 200ms`, border: `1px solid ${C.border}` }}>
-            <div style={{ width: 18, height: 18, borderRadius: "50%", background: "white", position: "absolute", top: 2, left: recurring ? 18 : 2, transition: `left 200ms ${springs.bounce}`, boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
-          </div>
-          Repeat this transaction
-        </button>
-        {recurring && (
-          <div style={{ display: "flex", gap: 8 }}>
-            {["weekly","monthly","yearly"].map(f => (
-              <button key={f} onClick={() => setFreq(f)} style={{
-                padding: "7px 14px", borderRadius: 10, border: "none", cursor: "pointer",
-                background: freq === f ? C.accentSoft : C.surfaceAlt,
-                color: freq === f ? C.accent : C.textSub, fontSize: 13, fontWeight: 500, textTransform: "capitalize",
-              }}>{f}</button>
-            ))}
-          </div>
+        {!splitMode && (
+          <>
+            <button onClick={() => setRecurring(r => !r)} style={{
+              display: "flex", alignItems: "center", gap: 10, background: "none", border: "none",
+              cursor: "pointer", color: C.textSub, fontSize: 14, padding: 0, textAlign: "left",
+            }}>
+              <div style={{ width: 40, height: 24, borderRadius: 99, background: recurring ? C.accent : C.surfaceAlt, position: "relative", transition: `background 200ms`, border: `1px solid ${C.border}` }}>
+                <div style={{ width: 18, height: 18, borderRadius: "50%", background: "white", position: "absolute", top: 2, left: recurring ? 18 : 2, transition: `left 200ms ${springs.bounce}`, boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+              </div>
+              Repeat this transaction
+            </button>
+            {recurring && (
+              <div style={{ display: "flex", gap: 8 }}>
+                {["weekly","monthly","yearly"].map(f => (
+                  <button key={f} onClick={() => setFreq(f)} style={{
+                    padding: "7px 14px", borderRadius: 10, border: "none", cursor: "pointer",
+                    background: freq === f ? C.accentSoft : C.surfaceAlt,
+                    color: freq === f ? C.accent : C.textSub, fontSize: 13, fontWeight: 500, textTransform: "capitalize",
+                  }}>{f}</button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -302,7 +402,7 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
           fontSize: 15, fontWeight: 700, cursor: canSave ? "pointer" : "not-allowed",
           boxShadow: canSave ? `0 8px 24px ${C.accentGlow}` : "none",
           transition: `all 200ms ${springs.snap}`,
-        }}>Save Transaction</button>
+        }}>{splitMode ? "Save 2 Split Transactions" : "Save Transaction"}</button>
         {canSave && onSaveTemplates && (
           <button onClick={saveAsTemplate} style={{
             width: "100%", marginTop: 10, padding: "10px", borderRadius: 12, border: `1px dashed ${C.border}`,

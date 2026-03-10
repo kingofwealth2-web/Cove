@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { springs } from "../../tokens/springs";
 import YearBar from "../ui/YearBar";
 
@@ -14,10 +15,26 @@ const MoonIcon = () => (
     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
   </svg>
 );
+const SearchIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+  </svg>
+);
 
-export default function MobileTopBar({ onMenuOpen, onAdd, C, notifications, theme, onThemeToggle, yearBarProps, isReadOnly }) {
-  const unread = notifications.filter(n => !n.read).length;
+export default function MobileTopBar({
+  onMenuOpen, onAdd, C, notifications, theme, onThemeToggle,
+  yearBarProps, isReadOnly, activeScreen,
+  searchQuery, onSearchChange, searchActive, onSearchToggle,
+}) {
   const isDark = theme === "dark";
+  const isHome = activeScreen === "home";
+  const searchRef = useRef(null);
+
+  useEffect(() => {
+    if (searchActive && isHome) {
+      setTimeout(() => searchRef.current?.focus(), 100);
+    }
+  }, [searchActive, isHome]);
 
   return (
     <div style={{
@@ -25,17 +42,16 @@ export default function MobileTopBar({ onMenuOpen, onAdd, C, notifications, them
       background: C.surface,
       borderBottom: `1px solid ${isReadOnly ? C.warning + "44" : C.border}`,
       display: "flex", flexDirection: "column",
-      transition: `border-color 300ms ${springs.smooth}`,
+      transition: "border-color 300ms",
     }}>
-      {/* Main row */}
       <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
+        display: "flex", alignItems: "center",
         padding: "10px 16px 6px", gap: 8,
       }}>
-        {/* Left: hamburger */}
+        {/* Hamburger */}
         <button onClick={onMenuOpen} style={{
           background: C.surfaceAlt, border: "none", cursor: "pointer",
-          borderRadius: 10, width: 36, height: 36,
+          borderRadius: 10, width: 36, height: 36, flexShrink: 0,
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5,
         }}>
           <div style={{ width: 18, height: 2, borderRadius: 2, background: C.text }} />
@@ -43,32 +59,76 @@ export default function MobileTopBar({ onMenuOpen, onAdd, C, notifications, them
           <div style={{ width: 18, height: 2, borderRadius: 2, background: C.text }} />
         </button>
 
-        {/* Center: YearBar */}
-        {yearBarProps && <YearBar {...yearBarProps} isMobile />}
+        {/* Search input (home + active) */}
+        {isHome && searchActive ? (
+          <>
+            <div style={{
+              flex: 1, display: "flex", alignItems: "center", gap: 8,
+              background: C.surfaceAlt, borderRadius: 12, padding: "8px 12px",
+              border: "1px solid " + C.accent + "40",
+            }}>
+              <SearchIcon />
+              <input
+                ref={searchRef}
+                value={searchQuery}
+                onChange={e => onSearchChange(e.target.value)}
+                placeholder="Search transactions…"
+                style={{
+                  flex: 1, background: "none", border: "none", outline: "none",
+                  fontSize: 14, color: C.text, fontFamily: "inherit",
+                }}
+              />
+              {searchQuery ? (
+                <button onClick={() => onSearchChange("")} style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  color: C.textMuted, fontSize: 16, padding: 0, lineHeight: 1,
+                }}>✕</button>
+              ) : null}
+            </div>
+            <button onClick={onSearchToggle} style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: C.accent, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap",
+            }}>Done</button>
+          </>
+        ) : (
+          <>
+            {/* Year bar center */}
+            <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+              {yearBarProps && <YearBar {...yearBarProps} isMobile />}
+            </div>
 
-        {/* Right: theme + add */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button onClick={onThemeToggle} style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: C.surfaceAlt, border: `1px solid ${C.border}`,
-            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            color: isDark ? "#FFD60A" : "#5254CC",
-            transition: `all 200ms ${springs.snap}`,
-          }}>
-            {isDark ? <SunIcon /> : <MoonIcon />}
-          </button>
-
-          <button onClick={onAdd} disabled={isReadOnly} style={{
-            background: isReadOnly ? C.surfaceAlt : C.accent,
-            border: "none", cursor: isReadOnly ? "not-allowed" : "pointer",
-            borderRadius: 10, width: 36, height: 36,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: isReadOnly ? C.textMuted : "white", fontSize: 22, fontWeight: 300,
-            boxShadow: isReadOnly ? "none" : `0 4px 12px ${C.accentGlow}`,
-            transition: `all 200ms ${springs.snap}`,
-            opacity: isReadOnly ? 0.4 : 1,
-          }}>+</button>
-        </div>
+            {/* Right controls */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              {isHome && (
+                <button onClick={onSearchToggle} style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: C.surfaceAlt, border: "1px solid " + C.border,
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  color: C.textSub,
+                }}>
+                  <SearchIcon />
+                </button>
+              )}
+              <button onClick={onThemeToggle} style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: C.surfaceAlt, border: "1px solid " + C.border,
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                color: isDark ? "#FFD60A" : "#5254CC",
+              }}>
+                {isDark ? <SunIcon /> : <MoonIcon />}
+              </button>
+              <button onClick={onAdd} disabled={isReadOnly} style={{
+                background: isReadOnly ? C.surfaceAlt : C.accent,
+                border: "none", cursor: isReadOnly ? "not-allowed" : "pointer",
+                borderRadius: 10, width: 36, height: 36,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: isReadOnly ? C.textMuted : "white", fontSize: 22, fontWeight: 300,
+                boxShadow: isReadOnly ? "none" : "0 4px 12px " + C.accentGlow,
+                opacity: isReadOnly ? 0.4 : 1,
+              }}>+</button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Read-only strip */}

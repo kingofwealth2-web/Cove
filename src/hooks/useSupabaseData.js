@@ -12,6 +12,7 @@ export function useSupabaseData(session) {
   const [assets, setAssetsState] = useState([]);
   const [liabilities, setLiabilitiesState] = useState([]);
   const [snapshots, setSnapshots] = useState([]);
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
 
   const uid = session?.user?.id;
 
@@ -113,6 +114,7 @@ export function useSupabaseData(session) {
       setAssetsState(ast?.length ? ast.map(mapAsset) : []);
       setLiabilitiesState(lib?.length ? lib.map(mapLiab) : []);
       setSnapshots(snaps || []);
+      setLastSyncedAt(new Date());
     } finally {
       setLoading(false);
     }
@@ -229,7 +231,7 @@ export function useSupabaseData(session) {
       original_amount: tx.originalAmount || null,
       exchange_rate: tx.exchangeRate || 1,
     }).select().single();
-    if (data) setTransactionsState(ts => [mapTx(data), ...ts]);
+    if (data) { setTransactionsState(ts => [mapTx(data), ...ts]); setLastSyncedAt(new Date()); }
   };
 
   const deleteTransaction = async (id) => {
@@ -372,7 +374,7 @@ export function useSupabaseData(session) {
   };
 
   return {
-    profile, loading,
+    profile, loading, lastSyncedAt,
     transactions, categories, bills, goals, debts, assets, liabilities,
     notifications, notifSettings, budgetMethod, pinHash, fxRates, biometricCredentialId,
     templates, saveTemplates,

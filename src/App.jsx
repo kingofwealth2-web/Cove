@@ -26,8 +26,6 @@ import RecurringScreen from "./screens/RecurringScreen";
 import NotificationsScreen from "./screens/NotificationsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import AskCoveScreen from "./screens/AskCoveScreen";
-import { usePWAInstall } from "./hooks/usePWAInstall";
-import InstallBanner from "./components/ui/InstallBanner";
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -43,7 +41,16 @@ export default function App() {
   const [pinLocked, setPinLocked] = useState(false);
   const [notifReadIds, setNotifReadIds] = useState(new Set());
   const [notifDismissedIds, setNotifDismissedIds] = useState(new Set());
-  const { showBanner, install, dismiss } = usePWAInstall(); 
+  const [mobileSearchQuery, setMobileSearchQuery] = useState("");
+  const [mobileSearchActive, setMobileSearchActive] = useState(false);
+
+  // Reset mobile search when leaving home screen
+  useEffect(() => {
+    if (active !== "home") {
+      setMobileSearchActive(false);
+      setMobileSearchQuery("");
+    }
+  }, [active]);
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -67,7 +74,7 @@ export default function App() {
   }, []);
 
   const {
-    profile, loading,
+    profile, loading, lastSyncedAt,
     transactions, categories, bills, goals, debts, assets, liabilities,
     notifications, notifSettings, budgetMethod, pinHash, fxRates, biometricCredentialId,
     templates, saveTemplates,
@@ -277,7 +284,7 @@ export default function App() {
   const readOnlyProps = { selectedYear, isReadOnly };
 
   const SCREENS = [
-    { id: "home",          el: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} onBulkDeleteTransactions={handleBulkDeleteTransactions} selectedYear={selectedYear} /> },
+    { id: "home",          el: <Dashboard transactions={transactions} categories={categories} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} onBulkDeleteTransactions={handleBulkDeleteTransactions} selectedYear={selectedYear} mobileSearchQuery={mobileSearchQuery} mobileSearchActive={mobileSearchActive} /> },
     { id: "budget",        el: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} {...readOnlyProps} /> },
     { id: "trends",        el: <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} {...readOnlyProps} /> },
     { id: "recurring",     el: <RecurringScreen transactions={transactions} categories={categories} user={user} C={C} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} {...readOnlyProps} /> },
@@ -287,7 +294,7 @@ export default function App() {
     { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} {...readOnlyProps} /> },
     { id: "ask",           el: <AskCoveScreen transactions={transactions} categories={categories} goals={goals} debts={debts} bills={bills} user={user} C={C} /> },
     { id: "notifications", el: <NotificationsScreen notifications={mergedNotifications} setNotifications={setNotifications} C={C} /> },
-    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentialId={biometricCredentialId} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} /> },
+    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentialId={biometricCredentialId} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} lastSyncedAt={lastSyncedAt} /> },
   ];
 
   return (
@@ -297,7 +304,7 @@ export default function App() {
         <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={mergedNotifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {isMobile
-            ? <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => !isReadOnly && setShowAdd(true)} C={C} notifications={mergedNotifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} yearBarProps={yearBarProps} isReadOnly={isReadOnly} />
+            ? <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => !isReadOnly && setShowAdd(true)} C={C} notifications={mergedNotifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} yearBarProps={yearBarProps} isReadOnly={isReadOnly} activeScreen={active} searchQuery={mobileSearchQuery} onSearchChange={setMobileSearchQuery} searchActive={mobileSearchActive} onSearchToggle={() => { setMobileSearchActive(s => !s); setMobileSearchQuery(""); }} />
             : (
               <div style={{
                 position: "sticky", top: 0, zIndex: 50,
@@ -341,7 +348,6 @@ export default function App() {
           </main>
         </div>
       </div>
-      {showBanner && <InstallBanner onInstall={install} onDismiss={dismiss} C={C} />}
       {showAdd && !isReadOnly && <AddTransactionPanel onClose={() => setShowAdd(false)} onSave={handleAddTransaction} categories={categories} user={user} C={C} fxRates={fxRates} templates={templates} onSaveTemplates={saveTemplates} />}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>

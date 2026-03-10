@@ -171,7 +171,7 @@ export default function SettingsScreen({
   budgetMethod, onBudgetMethodChange,
   notifSettings, onNotifSettingsChange,
   pinHash, onSetPin, biometricCredentialId, onEnableBiometric, onDisableBiometric,
-  selectedYear, onImportTransactions, fxRates = {}, onSaveFxRates,
+  selectedYear, onImportTransactions, fxRates = {}, onSaveFxRates, lastSyncedAt,
 }) {
   const isMobile = useIsMobile();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -628,6 +628,31 @@ export default function SettingsScreen({
       </Section>
 
       <Section title="Data" C={C}>
+        {/* Backup status */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "12px 16px", borderRadius: 14, marginBottom: 16,
+          background: lastSyncedAt ? C.incomeSoft || C.accentSoft : C.surfaceAlt,
+          border: `1px solid ${lastSyncedAt ? C.income + "40" : C.border}`,
+        }}>
+          <div style={{
+            width: 10, height: 10, borderRadius: "50%", flexShrink: 0,
+            background: lastSyncedAt ? C.income : C.textMuted,
+            boxShadow: lastSyncedAt ? `0 0 8px ${C.income}88` : "none",
+          }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
+              {lastSyncedAt ? "Your data is backed up" : "Syncing…"}
+            </div>
+            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>
+              {lastSyncedAt
+                ? `Last synced ${lastSyncedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} · Stored securely in Supabase`
+                : "Connecting to your account…"}
+            </div>
+          </div>
+          <span style={{ fontSize: 18 }}>{lastSyncedAt ? "☁️" : "⏳"}</span>
+        </div>
+
         <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 12 }}>
           Exporting {exportYear} data ({transactions.filter(t => new Date(t.date).getFullYear() === exportYear).length} transactions)
         </div>
