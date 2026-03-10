@@ -3,6 +3,7 @@ import { springs } from "../tokens/springs";
 import { accentOptions } from "../tokens/colors";
 import { supabase } from "../lib/supabase";
 import { hashPin } from "../lib/pinUtils";
+import { isBiometricAvailable, registerBiometric } from "../lib/biometricUtils";
 import Modal from "../components/ui/Modal";
 
 function useIsMobile() {
@@ -169,7 +170,8 @@ export default function SettingsScreen({
   onSignOut, transactions, categories, onDeleteAllData,
   budgetMethod, onBudgetMethodChange,
   notifSettings, onNotifSettingsChange,
-  pinHash, onSetPin, selectedYear, onImportTransactions, fxRates = {}, onSaveFxRates,
+  pinHash, onSetPin, biometricCredentialId, onEnableBiometric, onDisableBiometric,
+  selectedYear, onImportTransactions, fxRates = {}, onSaveFxRates,
 }) {
   const isMobile = useIsMobile();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -183,6 +185,7 @@ export default function SettingsScreen({
   const [fxFetching, setFxFetching] = useState(false);
   const [fxError, setFxError] = useState("");
   const [availableCurrencies, setAvailableCurrencies] = useState([]);
+  const [bioStatus, setBioStatus] = useState(""); // "" | "enabling" | "error:<msg>"
 
   const handleEmailSave = async () => {
     if (!emailInput || emailInput === session?.user?.email) return;
@@ -235,6 +238,28 @@ export default function SettingsScreen({
 
   const currentYear = new Date().getFullYear();
   const exportYear = selectedYear || currentYear;
+
+  const handleEnableBiometrics = async () => {
+    setBioStatus("enabling");
+    try {
+      const available = await isBiometricAvailable();
+      if (!available) {
+        setBioStatus("error:This device doesn't support biometric authentication.");
+        return;
+      }
+      // Need the Supabase user ID to register — get it from session
+      const { data: { user } } = await supabase.auth.getUser();
+      const credentialId = await registerBiometric(user.id);
+      await onEnableBiometric(credentialId);
+      setBioStatus("");
+    } catch (e) {
+      if (e.name === "NotAllowedError") {
+        setBioStatus("error:Biometric setup was cancelled.");
+      } else {
+        setBioStatus("error:Could not set up biometrics. Try again.");
+      }
+    }
+  };
 
   const exportCSV = () => {
     const yearTx = transactions.filter(t => new Date(t.date).getFullYear() === exportYear);
@@ -521,13 +546,43 @@ export default function SettingsScreen({
             <button onClick={() => setPinModal("enable")} style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: C.accent, color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Enable</button>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0" }}>
-          <div>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "13px 0" }}>
+          <div style={{ flex: 1, marginRight: 16 }}>
             <div style={{ fontSize: 14, color: C.text }}>Biometric Login</div>
-            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Coming soon</div>
+            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>
+              {biometricCredentialId
+                ? "Face ID / Touch ID is enabled for this device"
+                : "Use Face ID, Touch ID, or fingerprint to unlock"}
+            </div>
+            {bioStatus.startsWith("error:") && (
+              <div style={{ fontSize: 12, color: C.expense, marginTop: 6, padding: "6px 10px", background: C.expenseSoft, borderRadius: 8 }}>
+                {bioStatus.slice(6)}
+              </div>
+            )}
           </div>
-          <div style={{ fontSize: 12, color: C.textMuted, background: C.surfaceAlt, padding: "4px 10px", borderRadius: 99 }}>Soon</div>
+          {biometricCredentialId ? (
+            <button onClick={() => { onDisableBiometric && onDisableBiometric(); setBioStatus(""); }} style={{
+              padding: "8px 14px", borderRadius: 10, border: "none",
+              background: C.expense + "22", color: C.expense,
+              fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0,
+            }}>Disable</button>
+          ) : (
+            <button onClick={handleEnableBiometrics} disabled={bioStatus === "enabling" || !pinHash} style={{
+              padding: "8px 16px", borderRadius: 10, border: "none",
+              background: (bioStatus === "enabling" || !pinHash) ? C.surfaceAlt : C.accent,
+              color: (bioStatus === "enabling" || !pinHash) ? C.textMuted : "white",
+              fontSize: 13, fontWeight: 600, cursor: (bioStatus === "enabling" || !pinHash) ? "default" : "pointer",
+              flexShrink: 0,
+            }}>
+              {bioStatus === "enabling" ? "Setting up…" : "Enable"}
+            </button>
+          )}
         </div>
+        {!pinHash && (
+          <div style={{ fontSize: 12, color: C.textMuted, padding: "6px 10px", background: C.surfaceAlt, borderRadius: 8, marginBottom: 4 }}>
+            Set up a PIN first — biometrics acts as an alternative unlock method.
+          </div>
+        )}
       </Section>
 
       <Section title="Data" C={C}>

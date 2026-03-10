@@ -21,6 +21,7 @@ export function useSupabaseData(session) {
   const budgetMethod  = profile?.budget_method || "envelope";
   const pinHash       = profile?.pin_hash || null;
   const fxRates       = profile?.fx_rates || {};
+  const biometricCredentialId = profile?.biometric_credential_id || null;
 
   const expenseCategories = categories.filter(c => !c.is_income);
 
@@ -207,6 +208,7 @@ export function useSupabaseData(session) {
     if (updates.budgetMethod !== undefined) dbUpdates.budget_method = updates.budgetMethod;
     if (updates.notifSettings !== undefined) dbUpdates.notif_settings = updates.notifSettings;
     if (updates.pinHash !== undefined)      dbUpdates.pin_hash = updates.pinHash;
+    if (updates.biometricCredentialId !== undefined) dbUpdates.biometric_credential_id = updates.biometricCredentialId;
     if (!Object.keys(dbUpdates).length) return;
     await supabase.from("profiles").update(dbUpdates).eq("id", uid);
     setProfile(p => ({ ...p, ...dbUpdates }));
@@ -366,7 +368,7 @@ export function useSupabaseData(session) {
   return {
     profile, loading,
     transactions, categories, bills, goals, debts, assets, liabilities,
-    notifications, notifSettings, budgetMethod, pinHash, fxRates,
+    notifications, notifSettings, budgetMethod, pinHash, fxRates, biometricCredentialId,
     addTransaction, deleteTransaction, updateTransaction,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
     saveOnboarding, saveSettings, saveFxRates, deleteAllData, snapshots, saveNetworthSnapshot,

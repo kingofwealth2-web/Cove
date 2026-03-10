@@ -65,7 +65,7 @@ export default function App() {
   const {
     profile, loading,
     transactions, categories, bills, goals, debts, assets, liabilities,
-    notifications, notifSettings, budgetMethod, pinHash, fxRates,
+    notifications, notifSettings, budgetMethod, pinHash, fxRates, biometricCredentialId,
     addTransaction, deleteTransaction, updateTransaction,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
     saveOnboarding, saveSettings, saveFxRates, deleteAllData, snapshots, saveNetworthSnapshot,
@@ -209,6 +209,14 @@ export default function App() {
     }
   };
 
+  const handleEnableBiometric = async (credentialId) => {
+    await saveSettings({ biometricCredentialId: credentialId });
+  };
+
+  const handleDisableBiometric = async () => {
+    await saveSettings({ biometricCredentialId: null });
+  };
+
   const handleImportTransactions = async (txList) => {
     for (const tx of txList) {
       await addTransaction(tx);
@@ -232,7 +240,7 @@ export default function App() {
 
   if (!session) return <AuthScreen />;
   if (!profile && !loading) return <Onboarding onComplete={handleOnboardingComplete} />;
-  if (pinLocked && pinHash) return <PinScreen pinHash={pinHash} onUnlock={() => setPinLocked(false)} C={C} />;
+  if (pinLocked && pinHash) return <PinScreen pinHash={pinHash} biometricCredentialId={biometricCredentialId} onUnlock={() => setPinLocked(false)} C={C} />;
 
   const getScreenAnimation = (id) => {
     if (id === active && !animatedScreens.current.has(id)) {
@@ -255,7 +263,7 @@ export default function App() {
     { id: "debt",          el: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} {...readOnlyProps} /> },
     { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} {...readOnlyProps} /> },
     { id: "notifications", el: <NotificationsScreen notifications={mergedNotifications} setNotifications={setNotifications} C={C} /> },
-    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} /> },
+    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentialId={biometricCredentialId} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} /> },
   ];
 
   return (
