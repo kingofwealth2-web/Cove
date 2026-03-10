@@ -10,7 +10,18 @@ function base64ToUint8(str) {
   return Uint8Array.from(raw, c => c.charCodeAt(0));
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
+/** Infer a human-readable device label from userAgent */
+export function getDeviceLabel() {
+  const ua = navigator.userAgent;
+  if (/iPhone/.test(ua)) return "iPhone";
+  if (/iPad/.test(ua)) return "iPad";
+  if (/Android/.test(ua)) return "Android";
+  if (/Mac OS X/.test(ua) && !/Chrome/.test(ua)) return "Mac (Safari)";
+  if (/Macintosh/.test(ua)) return "Mac";
+  if (/Windows/.test(ua)) return "Windows PC";
+  if (/Linux/.test(ua)) return "Linux";
+  return "Unknown device";
+}
 
 /** Returns true if the device has a platform biometric authenticator */
 export async function isBiometricAvailable() {
@@ -24,11 +35,10 @@ export async function isBiometricAvailable() {
 
 /**
  * Register a new biometric credential for this device.
- * Returns the credential ID as a base64url string to store in the profile.
+ * Returns an object { id, label, addedAt } to push into the credentials array.
  */
 export async function registerBiometric(userId) {
   const challenge = crypto.getRandomValues(new Uint8Array(32));
-  // userId must be ≤ 64 bytes; Supabase UUIDs are 36 chars — fine as-is
   const userIdBytes = new TextEncoder().encode(userId.slice(0, 64));
 
   const credential = await navigator.credentials.create({
@@ -41,34 +51,49 @@ export async function registerBiometric(userId) {
         { type: "public-key", alg: -257 },  // RS256  (Windows Hello fallback)
       ],
       authenticatorSelection: {
-        authenticatorAttachment: "platform",   // device-local only (no USB keys)
-        userVerification: "required",          // must pass biometric/PIN
+        authenticatorAttachment: "platform",
+        userVerification: "required",
         residentKey: "preferred",
       },
       timeout: 60000,
     },
   });
 
-  return uint8ToBase64(new Uint8Array(credential.rawId));
+  return {
+    id: uint8ToBase64(new Uint8Array(credential.rawId)),
+    label: getDeviceLabel(),
+    addedAt: new Date().toISOString(),
+  };
 }
 
 /**
- * Verify biometric for an existing credential.
- * Throws if the user cancels or the check fails.
+ * Verify biometric against an array of registered credentials.
+ * Tries all credentials for this device — the OS picks the matching one.
+ * Throws if cancelled or failed.
  */
-export async function verifyBiometric(credentialIdBase64) {
+export async function verifyBiometric(credentials) {
+  // Accept either the old single-string format or new array format
+  const credList = Array.isArray(credentials)
+    ? credentials
+    : [{ id: credentials }];
+
+  if (credList.length === 0) throw new Error("No credentials registered");
+
   const challenge = crypto.getRandomValues(new Uint8Array(32));
-  const credId = base64ToUint8(credentialIdBase64);
 
   await navigator.credentials.get({
     publicKey: {
       challenge,
       rpId: window.location.hostname,
-      allowCredentials: [{ id: credId, type: "public-key", transports: ["internal"] }],
+      allowCredentials: credList.map(c => ({
+        id: base64ToUint8(c.id),
+        type: "public-key",
+        transports: ["internal"],
+      })),
       userVerification: "required",
       timeout: 60000,
     },
   });
-  // Resolving without throw = OS confirmed biometric ✓
+
   return true;
 }

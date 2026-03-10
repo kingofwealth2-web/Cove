@@ -76,7 +76,7 @@ export default function App() {
   const {
     profile, loading, lastSyncedAt,
     transactions, categories, bills, goals, debts, assets, liabilities,
-    notifications, notifSettings, budgetMethod, pinHash, fxRates, biometricCredentialId,
+    notifications, notifSettings, budgetMethod, pinHash, fxRates, biometricCredentials,
     templates, saveTemplates,
     addTransaction, deleteTransaction, updateTransaction,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
@@ -234,12 +234,16 @@ export default function App() {
     }
   };
 
-  const handleEnableBiometric = async (credentialId) => {
-    await saveSettings({ biometricCredentialId: credentialId });
+  // Adds a new credential { id, label, addedAt } to the array
+  const handleEnableBiometric = async (credential) => {
+    const updated = [...(biometricCredentials || []), credential];
+    await saveSettings({ biometricCredentials: updated });
   };
 
-  const handleDisableBiometric = async () => {
-    await saveSettings({ biometricCredentialId: null });
+  // Removes a specific credential by id (per-device removal)
+  const handleDisableBiometric = async (credentialId) => {
+    const updated = (biometricCredentials || []).filter(c => c.id !== credentialId);
+    await saveSettings({ biometricCredentials: updated });
   };
 
   const handleBulkDeleteTransactions = async (ids) => {
@@ -270,7 +274,7 @@ export default function App() {
 
   if (!session) return <AuthScreen />;
   if (!profile && !loading) return <Onboarding onComplete={handleOnboardingComplete} />;
-  if (pinLocked && pinHash) return <PinScreen pinHash={pinHash} biometricCredentialId={biometricCredentialId} onUnlock={() => setPinLocked(false)} C={C} />;
+  if (pinLocked && pinHash) return <PinScreen pinHash={pinHash} biometricCredentials={biometricCredentials} onUnlock={() => setPinLocked(false)} C={C} />;
 
   const getScreenAnimation = (id) => {
     if (id === active && !animatedScreens.current.has(id)) {
@@ -294,7 +298,7 @@ export default function App() {
     { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} {...readOnlyProps} /> },
     { id: "ask",           el: <AskCoveScreen transactions={transactions} categories={categories} goals={goals} debts={debts} bills={bills} user={user} C={C} /> },
     { id: "notifications", el: <NotificationsScreen notifications={mergedNotifications} setNotifications={setNotifications} C={C} /> },
-    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentialId={biometricCredentialId} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} lastSyncedAt={lastSyncedAt} /> },
+    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentials={biometricCredentials} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} lastSyncedAt={lastSyncedAt} /> },
   ];
 
   return (

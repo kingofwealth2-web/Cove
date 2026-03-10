@@ -18,31 +18,29 @@ const FingerprintIcon = ({ size = 40, color = "currentColor" }) => (
   </svg>
 );
 
-export default function PinScreen({ onUnlock, pinHash, biometricCredentialId, C }) {
+export default function PinScreen({ onUnlock, pinHash, biometricCredentials, C }) {
+  const hasBio = Array.isArray(biometricCredentials) && biometricCredentials.length > 0;
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [checking, setChecking] = useState(false);
-  const [bioState, setBioState] = useState("idle"); // idle | prompting | failed
-  const [showPin, setShowPin] = useState(!biometricCredentialId);
+  const [bioState, setBioState] = useState("idle");
+  const [showPin, setShowPin] = useState(!hasBio);
   const bioTriggered = useRef(false);
 
-  // Auto-trigger biometric on mount if credential exists
   useEffect(() => {
-    if (biometricCredentialId && !bioTriggered.current) {
+    if (hasBio && !bioTriggered.current) {
       bioTriggered.current = true;
-      // Small delay so the screen renders first
       setTimeout(() => triggerBiometric(), 400);
     }
-  }, [biometricCredentialId]);
+  }, [hasBio]);
 
   const triggerBiometric = async () => {
-    if (!biometricCredentialId) return;
+    if (!hasBio) return;
     setBioState("prompting");
     try {
-      await verifyBiometric(biometricCredentialId);
+      await verifyBiometric(biometricCredentials);
       onUnlock();
-    } catch (e) {
-      // User cancelled or failed — show PIN fallback
+    } catch {
       setBioState("failed");
       setShowPin(true);
     }
@@ -102,7 +100,7 @@ export default function PinScreen({ onUnlock, pinHash, biometricCredentialId, C 
       </div>
 
       {/* Biometric button — shown when credential exists */}
-      {biometricCredentialId && (
+      {hasBio && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
           <button
             onClick={triggerBiometric}
@@ -122,8 +120,6 @@ export default function PinScreen({ onUnlock, pinHash, biometricCredentialId, C 
           <div style={{ fontSize: 12, color: bioState === "failed" ? C.textMuted : C.accent, fontWeight: 500 }}>
             {bioState === "failed" ? "Biometric unavailable — use PIN" : bioState === "prompting" ? "Checking…" : "Tap to use biometrics"}
           </div>
-
-          {/* Toggle PIN visibility when biometrics are available */}
           {bioState !== "prompting" && (
             <button onClick={() => setShowPin(s => !s)} style={{
               background: "none", border: "none", cursor: "pointer",
@@ -136,8 +132,7 @@ export default function PinScreen({ onUnlock, pinHash, biometricCredentialId, C 
         </div>
       )}
 
-      {/* PIN dots + numpad */}
-      {(showPin || !biometricCredentialId) && (
+      {(showPin || !hasBio) && (
         <>
           <div style={{ display: "flex", gap: 16, animation: error ? `shake 400ms ${springs.snap}` : "none" }}>
             {[0,1,2,3].map(i => (

@@ -170,7 +170,7 @@ export default function SettingsScreen({
   onSignOut, transactions, categories, onDeleteAllData,
   budgetMethod, onBudgetMethodChange,
   notifSettings, onNotifSettingsChange,
-  pinHash, onSetPin, biometricCredentialId, onEnableBiometric, onDisableBiometric,
+  pinHash, onSetPin, biometricCredentials = [], onEnableBiometric, onDisableBiometric,
   selectedYear, onImportTransactions, fxRates = {}, onSaveFxRates, lastSyncedAt,
 }) {
   const isMobile = useIsMobile();
@@ -264,8 +264,8 @@ export default function SettingsScreen({
       }
       // Need the Supabase user ID to register — get it from session
       const { data: { user } } = await supabase.auth.getUser();
-      const credentialId = await registerBiometric(user.id);
-      await onEnableBiometric(credentialId);
+      const credential = await registerBiometric(user.id);
+      await onEnableBiometric(credential);
       setBioStatus("");
     } catch (e) {
       if (e.name === "NotAllowedError") {
@@ -588,43 +588,73 @@ export default function SettingsScreen({
             <button onClick={() => setPinModal("enable")} style={{ padding: "8px 16px", borderRadius: 10, border: "none", background: C.accent, color: "white", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Enable</button>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "13px 0" }}>
-          <div style={{ flex: 1, marginRight: 16 }}>
-            <div style={{ fontSize: 14, color: C.text }}>Biometric Login</div>
-            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>
-              {biometricCredentialId
-                ? "Face ID / Touch ID is enabled for this device"
-                : "Use Face ID, Touch ID, or fingerprint to unlock"}
-            </div>
-            {bioStatus.startsWith("error:") && (
-              <div style={{ fontSize: 12, color: C.expense, marginTop: 6, padding: "6px 10px", background: C.expenseSoft, borderRadius: 8 }}>
-                {bioStatus.slice(6)}
+        <div style={{ paddingTop: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div>
+              <div style={{ fontSize: 14, color: C.text }}>Biometric Login</div>
+              <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>
+                {biometricCredentials.length > 0
+                  ? `${biometricCredentials.length} device${biometricCredentials.length !== 1 ? "s" : ""} registered`
+                  : "Use Face ID, Touch ID, or fingerprint to unlock"}
               </div>
-            )}
-          </div>
-          {biometricCredentialId ? (
-            <button onClick={() => { onDisableBiometric && onDisableBiometric(); setBioStatus(""); }} style={{
-              padding: "8px 14px", borderRadius: 10, border: "none",
-              background: C.expense + "22", color: C.expense,
-              fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0,
-            }}>Disable</button>
-          ) : (
+            </div>
             <button onClick={handleEnableBiometrics} disabled={bioStatus === "enabling" || !pinHash} style={{
               padding: "8px 16px", borderRadius: 10, border: "none",
               background: (bioStatus === "enabling" || !pinHash) ? C.surfaceAlt : C.accent,
               color: (bioStatus === "enabling" || !pinHash) ? C.textMuted : "white",
-              fontSize: 13, fontWeight: 600, cursor: (bioStatus === "enabling" || !pinHash) ? "default" : "pointer",
+              fontSize: 13, fontWeight: 600,
+              cursor: (bioStatus === "enabling" || !pinHash) ? "default" : "pointer",
               flexShrink: 0,
             }}>
-              {bioStatus === "enabling" ? "Setting up…" : "Enable"}
+              {bioStatus === "enabling" ? "Setting up…" : "+ Add This Device"}
             </button>
+          </div>
+
+          {/* Registered devices list */}
+          {biometricCredentials.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+              {biometricCredentials.map((cred) => (
+                <div key={cred.id} style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "10px 14px", borderRadius: 12,
+                  background: C.surfaceAlt, border: `1px solid ${C.border}`,
+                }}>
+                  <div style={{ fontSize: 20 }}>
+                    {/iPhone|iPad/.test(cred.label) ? "📱"
+                      : /Mac/.test(cred.label) ? "💻"
+                      : /Android/.test(cred.label) ? "📱"
+                      : /Windows/.test(cred.label) ? "🖥️"
+                      : "🔐"}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{cred.label}</div>
+                    {cred.addedAt && (
+                      <div style={{ fontSize: 11, color: C.textMuted }}>
+                        Added {new Date(cred.addedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      </div>
+                    )}
+                  </div>
+                  <button onClick={() => onDisableBiometric && onDisableBiometric(cred.id)} style={{
+                    padding: "6px 12px", borderRadius: 8, border: "none",
+                    background: C.expense + "22", color: C.expense,
+                    fontSize: 12, fontWeight: 600, cursor: "pointer",
+                  }}>Remove</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {bioStatus.startsWith("error:") && (
+            <div style={{ fontSize: 12, color: C.expense, marginTop: 8, padding: "6px 10px", background: C.expenseSoft, borderRadius: 8 }}>
+              {bioStatus.slice(6)}
+            </div>
+          )}
+          {!pinHash && (
+            <div style={{ fontSize: 12, color: C.textMuted, padding: "8px 10px", background: C.surfaceAlt, borderRadius: 8, marginTop: 8 }}>
+              Set up a PIN first — biometrics acts as an alternative unlock method.
+            </div>
           )}
         </div>
-        {!pinHash && (
-          <div style={{ fontSize: 12, color: C.textMuted, padding: "6px 10px", background: C.surfaceAlt, borderRadius: 8, marginBottom: 4 }}>
-            Set up a PIN first — biometrics acts as an alternative unlock method.
-          </div>
-        )}
       </Section>
 
       <Section title="Data" C={C}>
