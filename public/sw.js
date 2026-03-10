@@ -1,4 +1,4 @@
-const CACHE = "cove-v2";
+const CACHE = "cove-v3";
 const STATIC = ["/", "/index.html"];
 
 // Install — cache shell
@@ -22,9 +22,17 @@ self.addEventListener("activate", e => {
 // Fetch — network first, fall back to cache for navigation
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
-  
-  // Skip Supabase API requests — never cache those
-  if (e.request.url.includes("supabase.co")) return;
+
+  const url = e.request.url;
+
+  // Never cache: Supabase, Groq, any API calls
+  if (
+    url.includes("supabase.co") ||
+    url.includes("groq.com") ||
+    url.includes("api.anthropic.com") ||
+    url.includes("open.er-api.com") ||
+    url.includes("/api/")
+  ) return;
 
   // For navigation requests (HTML), serve cached shell on fail
   if (e.request.mode === "navigate") {
@@ -34,7 +42,7 @@ self.addEventListener("fetch", e => {
     return;
   }
 
-  // For assets — try cache first, then network, then cache on success
+  // For assets — cache first, then network
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
