@@ -216,7 +216,7 @@ export default function App() {
     setToast(`${txList.length} transaction${txList.length !== 1 ? "s" : ""} imported ✓`);
   };
 
-  const handleUserUpdate = async (updater) => {
+  const setUser = async (updater) => {
     const next = typeof updater === "function" ? updater(user) : updater;
     await saveSettings({ name: next.name, currency: next.currency, income: next.income });
   };
