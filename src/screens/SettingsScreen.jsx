@@ -123,13 +123,15 @@ export default function SettingsScreen({
   onSignOut, transactions, categories, onDeleteAllData,
   budgetMethod, onBudgetMethodChange,
   notifSettings, onNotifSettingsChange,
-  pinHash, onSetPin,
+  pinHash, onSetPin, selectedYear, onImportTransactions,
 }) {
   const isMobile = useIsMobile();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [emailInput, setEmailInput] = useState(session?.user?.email || "");
   const [emailStatus, setEmailStatus] = useState("");
+  const [importStatus, setImportStatus] = useState("");
+  const [importError, setImportError] = useState("");
 
   const handleEmailSave = async () => {
     if (!emailInput || emailInput === session?.user?.email) return;
@@ -141,24 +143,86 @@ export default function SettingsScreen({
 
   const handleRemovePin = () => { onSetPin(null); };
 
+  const currentYear = new Date().getFullYear();
+  const exportYear = selectedYear || currentYear;
+
   const exportCSV = () => {
-    const header = "Date,Type,Category,Amount,Note\n";
-    const rows = transactions.map(tx => {
+    const yearTx = transactions.filter(t => new Date(t.date).getFullYear() === exportYear);
+    const header = "Date,Type,Category,Amount,Note,Recurring\n";
+    const rows = yearTx.map(tx => {
       const cat = categories.find(c => c.id === tx.categoryId);
-      return `${tx.date},${tx.type},${cat?.name || ""},${tx.amount},"${(tx.note || "").replace(/"/g, '""')}"`;
+      return `${tx.date},${tx.type},${cat?.name || ""},${tx.amount},"${(tx.note || "").replace(/"/g, '""')}",${tx.isRecurring ? "yes" : "no"}`;
     }).join("\n");
     const blob = new Blob([header + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "cove-transactions.csv"; a.click();
+    const a = document.createElement("a"); a.href = url; a.download = `cove-transactions-${exportYear}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
   const exportJSON = () => {
-    const data = { transactions, categories, exportedAt: new Date().toISOString(), currency: user.currency };
+    const yearTx = transactions.filter(t => new Date(t.date).getFullYear() === exportYear);
+    const data = { transactions: yearTx, categories, exportedAt: new Date().toISOString(), currency: user.currency, year: exportYear };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "cove-data.json"; a.click();
+    const a = document.createElement("a"); a.href = url; a.download = `cove-data-${exportYear}.json`; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleImportCSV = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImportStatus(""); setImportError("");
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const lines = ev.target.result.split("\n").filter(Boolean);
+        const header = lines[0].toLowerCase();
+        if (!header.includes("date") || !header.includes("amount")) {
+          setImportError("CSV must have Date and Amount columns."); return;
+        }
+        const cols = lines[0].split(",").map(c => c.trim().toLowerCase().replace(/"/g, ""));
+        const dateIdx = cols.indexOf("date");
+        const typeIdx = cols.indexOf("type");
+        const catIdx = cols.indexOf("category");
+        const amtIdx = cols.indexOf("amount");
+        const noteIdx = cols.indexOf("note");
+
+        // Robust CSV line splitter — handles quoted fields with commas
+        const splitCSVLine = (line) => {
+          const out = []; let cur = ""; let inQ = false;
+          for (let i = 0; i < line.length; i++) {
+            if (line[i] === '"') inQ = !inQ;
+            else if (line[i] === ',' && !inQ) { out.push(cur.trim()); cur = ""; }
+            else cur += line[i];
+          }
+          out.push(cur.trim());
+          return out;
+        };
+
+        const parsed = lines.slice(1).map(line => {
+          const clean = splitCSVLine(line);
+          const catName = clean[catIdx] || "";
+          const cat = categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+          return {
+            date: clean[dateIdx] || new Date().toISOString().split("T")[0],
+            type: (clean[typeIdx] || "expense").toLowerCase(),
+            categoryId: cat?.id || categories[0]?.id,
+            amount: parseFloat(clean[amtIdx]) || 0,
+            note: clean[noteIdx] || "",
+            isRecurring: false,
+          };
+        }).filter(t => t.amount > 0 && t.date);
+
+        if (parsed.length === 0) { setImportError("No valid transactions found."); return; }
+        onImportTransactions && onImportTransactions(parsed);
+        setImportStatus(`✓ Imported ${parsed.length} transaction${parsed.length !== 1 ? "s" : ""}`);
+        setTimeout(() => setImportStatus(""), 4000);
+      } catch (err) {
+        setImportError("Failed to parse CSV. Check the format.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   };
 
   const notifLabels = {
@@ -199,19 +263,6 @@ export default function SettingsScreen({
       </Section>
 
       <Section title="Appearance" C={C}>
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 14, color: C.text, marginBottom: 10 }}>Theme</div>
-          <div style={{ display: "flex", background: C.surfaceAlt, borderRadius: 12, padding: 4, gap: 4 }}>
-            {["dark","light"].map(t => (
-              <button key={t} onClick={() => setTheme(t)} style={{
-                flex: 1, padding: "10px", borderRadius: 10, border: "none", cursor: "pointer",
-                background: theme === t ? C.surface : "transparent",
-                color: theme === t ? C.text : C.textMuted, fontSize: 14, fontWeight: 500,
-                boxShadow: theme === t ? C.shadow : "none", transition: `all 200ms ${springs.snap}`,
-              }}>{t === "dark" ? "🌙 Dark" : "☀️ Light"}</button>
-            ))}
-          </div>
-        </div>
         <div>
           <div style={{ fontSize: 14, color: C.text, marginBottom: 10 }}>Accent Color</div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -284,9 +335,12 @@ export default function SettingsScreen({
       </Section>
 
       <Section title="Data" C={C}>
+        <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 12 }}>
+          Exporting {exportYear} data ({transactions.filter(t => new Date(t.date).getFullYear() === exportYear).length} transactions)
+        </div>
         {[
-          { label: "Export as CSV", icon: "📥", action: exportCSV },
-          { label: "Export as JSON", icon: "📤", action: exportJSON },
+          { label: `Export ${exportYear} as CSV`, icon: "📥", action: exportCSV },
+          { label: `Export ${exportYear} as JSON`, icon: "📤", action: exportJSON },
         ].map(item => (
           <button key={item.label} onClick={item.action} style={{
             display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0",
@@ -297,6 +351,22 @@ export default function SettingsScreen({
           onMouseLeave={e => e.currentTarget.style.color = C.text}
           ><span>{item.icon}</span>{item.label}</button>
         ))}
+
+        {/* CSV Import */}
+        <div style={{ paddingTop: 4, paddingBottom: 4, borderBottom: `1px solid ${C.border}` }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0", cursor: "pointer", color: C.text, fontSize: 14 }}
+            onMouseEnter={e => e.currentTarget.style.color = C.accent}
+            onMouseLeave={e => e.currentTarget.style.color = C.text}>
+            <span>📂</span>Import from CSV
+            <input type="file" accept=".csv" onChange={handleImportCSV} style={{ display: "none" }} />
+          </label>
+          {importStatus && <div style={{ fontSize: 12, color: C.income, paddingBottom: 8 }}>{importStatus}</div>}
+          {importError && <div style={{ fontSize: 12, color: C.expense, paddingBottom: 8 }}>{importError}</div>}
+          <div style={{ fontSize: 12, color: C.textMuted, paddingBottom: 8 }}>
+            CSV must have: Date, Type (income/expense), Category, Amount, Note columns.
+          </div>
+        </div>
+
         {!confirmDelete ? (
           <button onClick={() => setConfirmDelete(true)} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 0", background: "none", border: "none", cursor: "pointer", color: C.expense, fontSize: 14, textAlign: "left" }}>
             <span>🗑</span>Delete All Data

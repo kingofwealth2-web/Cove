@@ -38,6 +38,8 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [pinLocked, setPinLocked] = useState(false);
+  const [notifReadIds, setNotifReadIds] = useState(new Set());
+  const [notifDismissedIds, setNotifDismissedIds] = useState(new Set());
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -68,6 +70,27 @@ export default function App() {
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
     saveOnboarding, saveSettings, deleteAllData, snapshots, saveNetworthSnapshot,
   } = useSupabaseData(session);
+
+  // Merge computed notifications with local read/dismissed overrides
+  const mergedNotifications = useMemo(() =>
+    notifications
+      .filter(n => !notifDismissedIds.has(n.id))
+      .map(n => ({ ...n, read: n.read || notifReadIds.has(n.id) })),
+    [notifications, notifReadIds, notifDismissedIds]
+  );
+
+  const setNotifications = (updater) => {
+    const updated = typeof updater === "function" ? updater(mergedNotifications) : updater;
+    // Extract which ids are now read or gone
+    const newReadIds = new Set(updated.filter(n => n.read).map(n => n.id));
+    const keptIds = new Set(updated.map(n => n.id));
+    const newDismissedIds = new Set([
+      ...notifDismissedIds,
+      ...mergedNotifications.filter(n => !keptIds.has(n.id)).map(n => n.id),
+    ]);
+    setNotifReadIds(newReadIds);
+    setNotifDismissedIds(newDismissedIds);
+  };
 
   // Re-lock when app comes back to foreground (PWA resume)
   useEffect(() => {
@@ -158,6 +181,8 @@ export default function App() {
     await supabase.auth.signOut();
     setSession(null);
     setPinLocked(false);
+    setNotifReadIds(new Set());
+    setNotifDismissedIds(new Set());
   };
 
   const handleDeleteAllData = async () => {
@@ -184,7 +209,14 @@ export default function App() {
     }
   };
 
-  const setUser = async (updater) => {
+  const handleImportTransactions = async (txList) => {
+    for (const tx of txList) {
+      await addTransaction(tx);
+    }
+    setToast(`${txList.length} transaction${txList.length !== 1 ? "s" : ""} imported ✓`);
+  };
+
+  const handleUserUpdate = async (updater) => {
     const next = typeof updater === "function" ? updater(user) : updater;
     await saveSettings({ name: next.name, currency: next.currency, income: next.income });
   };
@@ -222,18 +254,18 @@ export default function App() {
     { id: "goals",         el: <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} {...readOnlyProps} /> },
     { id: "debt",          el: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} {...readOnlyProps} /> },
     { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} {...readOnlyProps} /> },
-    { id: "notifications", el: <NotificationsScreen notifications={notifications} setNotifications={() => {}} C={C} /> },
-    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} /> },
+    { id: "notifications", el: <NotificationsScreen notifications={mergedNotifications} setNotifications={setNotifications} C={C} /> },
+    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} /> },
   ];
 
   return (
     <>
       <GlobalStyles C={C} />
       <div style={{ display: "flex", minHeight: "100vh", background: C.background }}>
-        <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={notifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />
+        <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={mergedNotifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {isMobile
-            ? <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => !isReadOnly && setShowAdd(true)} C={C} notifications={notifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} yearBarProps={yearBarProps} isReadOnly={isReadOnly} />
+            ? <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => !isReadOnly && setShowAdd(true)} C={C} notifications={mergedNotifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} yearBarProps={yearBarProps} isReadOnly={isReadOnly} />
             : (
               <div style={{
                 position: "sticky", top: 0, zIndex: 50,

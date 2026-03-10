@@ -69,8 +69,7 @@ export default function TrendsScreen({ transactions, categories, user, C, select
   // Real insights from data
   const currentBarData = barData[barData.length - 1];
   const prevBarData = barData[barData.length - 2];
-  const topCat = donutData.sort((a, b) => b.value - a.value)[0];
-  const totalTx = transactions.length;
+  const topCat = [...donutData].sort((a, b) => b.value - a.value)[0];
   const savingsRate = currentBarData?.income > 0
     ? Math.round(((currentBarData.income - currentBarData.expenses) / currentBarData.income) * 100)
     : 0;
@@ -78,12 +77,30 @@ export default function TrendsScreen({ transactions, categories, user, C, select
     ? Math.round(((currentBarData?.expenses - prevBarData.expenses) / prevBarData.expenses) * 100)
     : null;
 
+  // Per-category month-over-month changes
+  const catChanges = categories.filter(c => !c.is_income).map(cat => {
+    const curSpend = (currentBarData ? transactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getMonth() === months[months.length - 1].month && d.getFullYear() === months[months.length - 1].year && t.type === "expense" && t.categoryId === cat.id;
+    }).reduce((s, t) => s + t.amount, 0) : 0);
+    const prevSpend = (prevBarData ? transactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getMonth() === months[months.length - 2]?.month && d.getFullYear() === months[months.length - 2]?.year && t.type === "expense" && t.categoryId === cat.id;
+    }).reduce((s, t) => s + t.amount, 0) : 0);
+    const change = prevSpend > 0 ? Math.round(((curSpend - prevSpend) / prevSpend) * 100) : null;
+    return { ...cat, curSpend, prevSpend, change };
+  }).filter(c => c.change !== null && Math.abs(c.change) >= 10 && c.curSpend > 0);
+
+  const biggestRise = [...catChanges].sort((a, b) => b.change - a.change)[0];
+  const biggestDrop = [...catChanges].sort((a, b) => a.change - b.change)[0];
+
   const insights = [
-    topCat && { icon: "💸", text: `Biggest expense this month: ${topCat.name} (${user.currency} ${topCat.value.toLocaleString()})` },
-    expenseChange !== null && { icon: expenseChange > 0 ? "📈" : "📉", text: `Spending is ${Math.abs(expenseChange)}% ${expenseChange > 0 ? "higher" : "lower"} than last month` },
-    savingsRate > 0 && { icon: "💰", text: `You're saving ${savingsRate}% of your income this month` },
-    totalTx > 0 && { icon: "🔥", text: `You've logged ${totalTx} transaction${totalTx !== 1 ? "s" : ""} total` },
-    savingsRate >= 20 && { icon: "🏆", text: "Excellent! You're hitting the 20% savings target" },
+    topCat && { icon: "💸", text: `Biggest spend: ${topCat.name} at ${user.currency} ${topCat.value.toLocaleString()}` },
+    expenseChange !== null && { icon: expenseChange > 0 ? "📈" : "📉", text: `Overall spending is ${Math.abs(expenseChange)}% ${expenseChange > 0 ? "higher" : "lower"} than last month` },
+    biggestRise && biggestRise.change > 20 && { icon: "⚠️", text: `${biggestRise.icon} ${biggestRise.name} is up ${biggestRise.change}% vs last month (${user.currency} ${biggestRise.prevSpend.toLocaleString()} → ${user.currency} ${biggestRise.curSpend.toLocaleString()})` },
+    biggestDrop && biggestDrop.change < -10 && { icon: "✅", text: `${biggestDrop.icon} ${biggestDrop.name} is down ${Math.abs(biggestDrop.change)}% vs last month — nice work` },
+    savingsRate > 0 && { icon: "💰", text: `Saving ${savingsRate}% of income this month${savingsRate >= 20 ? " — above the 20% target 🏆" : ""}` },
+    savingsRate < 0 && { icon: "🚨", text: `Spending exceeds income this month by ${user.currency} ${Math.abs(currentBarData.income - currentBarData.expenses).toLocaleString()}` },
   ].filter(Boolean).slice(0, 5);
 
   const empty = transactions.length === 0;
