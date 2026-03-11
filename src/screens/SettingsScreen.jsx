@@ -603,9 +603,9 @@ export default function SettingsScreen({
         </div>
       </Section>
 
-      <Section title="Opening Balances" C={C}>
+      <Section title="My Accounts" C={C}>
         <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 14, lineHeight: 1.5 }}>
-          Your starting position when you joined. Edit any value and save — your Net Worth updates immediately.
+          Your account balances at a glance. Update any value to keep your net worth accurate.
         </div>
 
         {/* Assets */}
@@ -616,7 +616,7 @@ export default function SettingsScreen({
               {assets.map(a => (
                 <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12, border: `1px solid ${obEdits[a.id] !== undefined ? C.accent + "60" : C.border}` }}>
                   <span style={{ fontSize: 18 }}>
-                    {{ cash: "💵", savings: "🏦", property: "🏠", investment: "📈", vehicle: "🚗", other: "📦" }[a.type] || "📦"}
+                    {{ cash: "📱", savings: "🏦", property: "🏠", investment: "📈", vehicle: "🚗", other: "📦" }[a.type] || "📦"}
                   </span>
                   <span style={{ flex: 1, fontSize: 14, color: C.text }}>{a.name}</span>
                   <span style={{ fontSize: 12, color: C.textMuted }}>{user.currency}</span>

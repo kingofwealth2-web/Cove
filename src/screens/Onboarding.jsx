@@ -15,10 +15,9 @@ const INCOME_TYPES = [
 const CURRENCIES = ["GHS","USD","EUR","GBP","NGN","KES","ZAR","XOF","EGP","MAD"];
 
 const ASSET_PRESETS = [
-  { key: "cash",    label: "Cash in hand",   icon: "💵", type: "cash" },
-  { key: "savings", label: "Savings account",icon: "🏦", type: "savings" },
-  { key: "momo",    label: "Mobile money",   icon: "📱", type: "cash" },
-  { key: "other",   label: "Other account",  icon: "📦", type: "other" },
+  { key: "bank",   label: "Bank Account",   icon: "🏦", type: "savings", desc: "Savings, current, or cheque account" },
+  { key: "momo",   label: "Mobile Wallet",  icon: "📱", type: "cash",    desc: "MoMo, Vodafone Cash, Airtel Money, etc." },
+  { key: "other",  label: "Other",          icon: "📦", type: "other",   desc: "Cash, crypto, or any other account" },
 ];
 
 const DEBT_PRESETS = [
@@ -175,34 +174,52 @@ export default function Onboarding({ onComplete }) {
     // Step 3: Opening balances
     <div key="s3" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", padding: isMobile ? "40px 24px" : "60px 40px", gap: 24, animation: `slideUp 400ms ${springs.bounce}`, maxWidth: 560, margin: "0 auto", width: "100%" }}>
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>💰</div>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>🏦</div>
         <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 32, color: accentC.text, letterSpacing: "-0.5px", marginBottom: 8 }}>
-          What do you already have?
+          Where's your money?
         </h2>
         <p style={{ fontSize: 14, color: accentC.textMuted, lineHeight: 1.6 }}>
-          Tell Cove your starting position so your net worth is accurate from day one. You can always edit these later.
+          Add your current balances across your accounts. Cove uses this to track your net worth accurately from day one.
         </p>
       </div>
 
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: accentC.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Money you have</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {ASSET_PRESETS.map(p => (
-            <div key={p.key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: accentC.surfaceAlt, borderRadius: 14, border: `1px solid ${openingAssets[p.key] ? accentC.accent + "60" : accentC.border}`, transition: "border-color 200ms" }}>
-              <span style={{ fontSize: 20, flexShrink: 0 }}>{p.icon}</span>
-              <span style={{ flex: 1, fontSize: 14, color: accentC.text }}>{p.label}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 13, color: accentC.textMuted, flexShrink: 0 }}>{currency}</span>
-                <input type="number" min="0" placeholder="0"
-                  value={openingAssets[p.key] || ""}
-                  onChange={e => setOpeningAssets(prev => ({ ...prev, [p.key]: e.target.value }))}
-                  style={{ width: 110, padding: "8px 10px", background: accentC.surface, border: `1px solid ${accentC.border}`, borderRadius: 10, fontSize: 14, color: accentC.text, outline: "none", textAlign: "right" }}
-                  onFocus={e => e.target.style.borderColor = accentC.accent}
-                  onBlur={e => e.target.style.borderColor = accentC.border}
-                />
+        <div style={{ fontSize: 12, fontWeight: 700, color: accentC.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>My accounts</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {ASSET_PRESETS.map(p => {
+            const val = parseFloat(openingAssets[p.key]) || 0;
+            const filled = val > 0;
+            return (
+              <div key={p.key} style={{
+                display: "flex", alignItems: "center", gap: 14, padding: "14px 16px",
+                background: filled ? accentC.accentSoft : accentC.surfaceAlt,
+                borderRadius: 16,
+                border: `1.5px solid ${filled ? accentC.accent + "60" : accentC.border}`,
+                transition: "all 200ms",
+              }}>
+                <div style={{
+                  width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+                  background: filled ? accentC.accent + "20" : accentC.surface,
+                  border: `1px solid ${filled ? accentC.accent + "40" : accentC.border}`,
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20,
+                }}>{p.icon}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: filled ? accentC.accent : accentC.text }}>{p.label}</div>
+                  <div style={{ fontSize: 11, color: accentC.textMuted }}>{p.desc}</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 13, color: accentC.textMuted, flexShrink: 0 }}>{currency}</span>
+                  <input type="number" min="0" placeholder="0"
+                    value={openingAssets[p.key] || ""}
+                    onChange={e => setOpeningAssets(prev => ({ ...prev, [p.key]: e.target.value }))}
+                    style={{ width: 110, padding: "8px 10px", background: accentC.surface, border: `1px solid ${accentC.border}`, borderRadius: 10, fontSize: 14, color: accentC.text, outline: "none", textAlign: "right" }}
+                    onFocus={e => e.target.style.borderColor = accentC.accent}
+                    onBlur={e => e.target.style.borderColor = accentC.border}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
