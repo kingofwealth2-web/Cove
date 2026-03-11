@@ -213,10 +213,13 @@ export default function App() {
     setToast("Transaction saved ✓");
   };
 
-  const handleOnboardingComplete = async ({ name, incomeTypes, currency, accent, theme: t }) => {
+  const handleOnboardingComplete = async ({ name, incomeTypes, currency, accent, theme: t, openingBalances }) => {
     setTheme(t);
     setAccentChoice(accent);
     await saveOnboarding({ name, incomeTypes, currency, accent, theme: t });
+    // Seed opening balances into assets/liabilities tables
+    if (openingBalances?.assets?.length) await setAssets(openingBalances.assets);
+    if (openingBalances?.liabilities?.length) await setLiabilities(openingBalances.liabilities);
   };
 
   const handleSignOut = async () => {
@@ -315,7 +318,7 @@ export default function App() {
     { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} {...readOnlyProps} /> },
     { id: "ask",           el: <AskCoveScreen transactions={transactions} categories={categories} goals={goals} debts={debts} bills={bills} user={user} C={C} onInsightsSeen={handleInsightsSeen} /> },
     { id: "notifications", el: <NotificationsScreen notifications={mergedNotifications} setNotifications={setNotifications} C={C} /> },
-    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentials={biometricCredentials} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} lastSyncedAt={lastSyncedAt} /> },
+    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentials={biometricCredentials} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} lastSyncedAt={lastSyncedAt} assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} /> },
   ];
 
   return (

@@ -14,6 +14,19 @@ const INCOME_TYPES = [
 
 const CURRENCIES = ["GHS","USD","EUR","GBP","NGN","KES","ZAR","XOF","EGP","MAD"];
 
+const ASSET_PRESETS = [
+  { key: "cash",    label: "Cash in hand",   icon: "💵", type: "cash" },
+  { key: "savings", label: "Savings account",icon: "🏦", type: "savings" },
+  { key: "momo",    label: "Mobile money",   icon: "📱", type: "cash" },
+  { key: "other",   label: "Other account",  icon: "📦", type: "other" },
+];
+
+const DEBT_PRESETS = [
+  { key: "loan",    label: "Bank / personal loan", icon: "📋", type: "loan" },
+  { key: "credit",  label: "Credit card",          icon: "💳", type: "credit_card" },
+  { key: "family",  label: "Family / friend debt", icon: "🤝", type: "other" },
+];
+
 export default function Onboarding({ onComplete }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -21,6 +34,8 @@ export default function Onboarding({ onComplete }) {
   const [currency, setCurrency] = useState("GHS");
   const [accent, setAccent] = useState(accentOptions[0]);
   const [theme, setTheme] = useState("dark");
+  const [openingAssets, setOpeningAssets] = useState({});
+  const [openingDebts,  setOpeningDebts]  = useState({});
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const C = theme === "dark" ? darkColors : lightColors;
   const accentC = { ...C, accent: accent.value, accentSoft: accent.soft, accentGlow: accent.glow, accentDark: accent.dark };
@@ -35,7 +50,22 @@ export default function Onboarding({ onComplete }) {
     setIncomeTypes(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  const TOTAL_STEPS = 3;
+  // Build opening balance seed data for assets/liabilities tables
+  const buildOpeningBalances = () => {
+    const assets = ASSET_PRESETS
+      .filter(p => parseFloat(openingAssets[p.key]) > 0)
+      .map(p => ({ name: p.label, type: p.type, value: parseFloat(openingAssets[p.key]) }));
+    const liabilities = DEBT_PRESETS
+      .filter(p => parseFloat(openingDebts[p.key]) > 0)
+      .map(p => ({ name: p.label, type: p.type, balance: parseFloat(openingDebts[p.key]) }));
+    return { assets, liabilities };
+  };
+
+  const handleFinish = () => {
+    onComplete({ name, incomeTypes, currency, accent, theme, openingBalances: buildOpeningBalances() });
+  };
+
+  const TOTAL_STEPS = 4;
 
   const slides = [
     // Step 0: Name + currency
@@ -135,11 +165,79 @@ export default function Onboarding({ onComplete }) {
       </div>
       <div style={{ display: "flex", gap: 10 }}>
         <button onClick={() => setStep(1)} style={{ padding: "14px 24px", background: "none", border: `1px solid ${C.border}`, borderRadius: 16, color: C.textSub, fontSize: 14, cursor: "pointer" }}>← Back</button>
-        <button onClick={() => onComplete({ name, incomeTypes, currency, accent, theme })} style={{
+        <button onClick={() => setStep(3)} style={{
           padding: "15px 48px", background: accent.value, color: "white", border: "none", borderRadius: 16,
           fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: `0 8px 24px ${accent.glow}`,
+        }}>Continue →</button>
+      </div>
+    </div>,
+
+    // Step 3: Opening balances
+    <div key="s3" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", padding: isMobile ? "40px 24px" : "60px 40px", gap: 24, animation: `slideUp 400ms ${springs.bounce}`, maxWidth: 560, margin: "0 auto", width: "100%" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>💰</div>
+        <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 32, color: accentC.text, letterSpacing: "-0.5px", marginBottom: 8 }}>
+          What do you already have?
+        </h2>
+        <p style={{ fontSize: 14, color: accentC.textMuted, lineHeight: 1.6 }}>
+          Tell Cove your starting position so your net worth is accurate from day one. You can always edit these later.
+        </p>
+      </div>
+
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: accentC.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Money you have</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {ASSET_PRESETS.map(p => (
+            <div key={p.key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: accentC.surfaceAlt, borderRadius: 14, border: `1px solid ${openingAssets[p.key] ? accentC.accent + "60" : accentC.border}`, transition: "border-color 200ms" }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }}>{p.icon}</span>
+              <span style={{ flex: 1, fontSize: 14, color: accentC.text }}>{p.label}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 13, color: accentC.textMuted, flexShrink: 0 }}>{currency}</span>
+                <input type="number" min="0" placeholder="0"
+                  value={openingAssets[p.key] || ""}
+                  onChange={e => setOpeningAssets(prev => ({ ...prev, [p.key]: e.target.value }))}
+                  style={{ width: 110, padding: "8px 10px", background: accentC.surface, border: `1px solid ${accentC.border}`, borderRadius: 10, fontSize: 14, color: accentC.text, outline: "none", textAlign: "right" }}
+                  onFocus={e => e.target.style.borderColor = accentC.accent}
+                  onBlur={e => e.target.style.borderColor = accentC.border}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: accentC.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Money you owe</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {DEBT_PRESETS.map(p => (
+            <div key={p.key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: accentC.surfaceAlt, borderRadius: 14, border: `1px solid ${openingDebts[p.key] ? "#FF375F40" : accentC.border}`, transition: "border-color 200ms" }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }}>{p.icon}</span>
+              <span style={{ flex: 1, fontSize: 14, color: accentC.text }}>{p.label}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 13, color: accentC.textMuted, flexShrink: 0 }}>{currency}</span>
+                <input type="number" min="0" placeholder="0"
+                  value={openingDebts[p.key] || ""}
+                  onChange={e => setOpeningDebts(prev => ({ ...prev, [p.key]: e.target.value }))}
+                  style={{ width: 110, padding: "8px 10px", background: accentC.surface, border: `1px solid ${accentC.border}`, borderRadius: 10, fontSize: 14, color: accentC.text, outline: "none", textAlign: "right" }}
+                  onFocus={e => e.target.style.borderColor = "#FF375F"}
+                  onBlur={e => e.target.style.borderColor = accentC.border}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={() => setStep(2)} style={{ padding: "14px 24px", background: "none", border: `1px solid ${accentC.border}`, borderRadius: 16, color: accentC.textSub, fontSize: 14, cursor: "pointer" }}>← Back</button>
+        <button onClick={handleFinish} style={{
+          flex: 1, padding: "15px", background: accentC.accent, color: "white", border: "none", borderRadius: 16,
+          fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: `0 8px 24px ${accentC.accentGlow}`,
         }}>Enter Cove →</button>
       </div>
+      <button onClick={handleFinish} style={{ background: "none", border: "none", fontSize: 13, color: accentC.textMuted, cursor: "pointer", padding: 4 }}>
+        Skip — I'll add this later
+      </button>
     </div>,
   ];
 

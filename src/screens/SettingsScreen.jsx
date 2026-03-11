@@ -172,6 +172,7 @@ export default function SettingsScreen({
   notifSettings, onNotifSettingsChange,
   pinHash, onSetPin, biometricCredentials = [], onEnableBiometric, onDisableBiometric,
   selectedYear, onImportTransactions, fxRates = {}, onSaveFxRates, lastSyncedAt,
+  assets = [], setAssets, liabilities = [], setLiabilities,
 }) {
   const isMobile = useIsMobile();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -185,9 +186,44 @@ export default function SettingsScreen({
   const [fxFetching, setFxFetching] = useState(false);
   const [fxError, setFxError] = useState("");
   const [availableCurrencies, setAvailableCurrencies] = useState([]);
-  const [bioStatus, setBioStatus] = useState(""); // "" | "enabling" | "error:<msg>"
+  const [bioStatus, setBioStatus] = useState("");
   const [installable, setInstallable] = useState(!!window.__pwaPrompt);
   const [installDone, setInstallDone] = useState(false);
+
+  // Opening balances local edit state
+  const [obEdits, setObEdits] = useState({});
+  const [obSaving, setObSaving] = useState(false);
+  const [obSaved, setObSaved] = useState(false);
+
+  // Build a flat map of { id: value } for all assets + liabilities
+  const getObValue = (id) => {
+    if (obEdits[id] !== undefined) return obEdits[id];
+    const asset = assets.find(a => a.id === id);
+    if (asset) return String(asset.value);
+    const liab = liabilities.find(l => l.id === id);
+    if (liab) return String(liab.balance);
+    return "";
+  };
+
+  const handleObSave = async () => {
+    if (!setAssets || !setLiabilities) return;
+    setObSaving(true);
+    // Apply edits to assets
+    const newAssets = assets.map(a =>
+      obEdits[a.id] !== undefined ? { ...a, value: parseFloat(obEdits[a.id]) || 0 } : a
+    );
+    // Apply edits to liabilities
+    const newLiabs = liabilities.map(l =>
+      obEdits[l.id] !== undefined ? { ...l, balance: parseFloat(obEdits[l.id]) || 0 } : l
+    );
+    await Promise.all([setAssets(newAssets), setLiabilities(newLiabs)]);
+    setObEdits({});
+    setObSaving(false);
+    setObSaved(true);
+    setTimeout(() => setObSaved(false), 2500);
+  };
+
+  const hasObEdits = Object.keys(obEdits).length > 0;
 
   useEffect(() => {
     const check = () => setInstallable(!!window.__pwaPrompt);
@@ -565,6 +601,86 @@ export default function SettingsScreen({
         <div style={{ fontSize: 11, color: C.textMuted, marginTop: 8 }}>
           Adding a currency fetches its current rate automatically.
         </div>
+      </Section>
+
+      <Section title="Opening Balances" C={C}>
+        <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 14, lineHeight: 1.5 }}>
+          Your starting position when you joined. Edit any value and save — your Net Worth updates immediately.
+        </div>
+
+        {/* Assets */}
+        {assets.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Money you have</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {assets.map(a => (
+                <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12, border: `1px solid ${obEdits[a.id] !== undefined ? C.accent + "60" : C.border}` }}>
+                  <span style={{ fontSize: 18 }}>
+                    {{ cash: "💵", savings: "🏦", property: "🏠", investment: "📈", vehicle: "🚗", other: "📦" }[a.type] || "📦"}
+                  </span>
+                  <span style={{ flex: 1, fontSize: 14, color: C.text }}>{a.name}</span>
+                  <span style={{ fontSize: 12, color: C.textMuted }}>{user.currency}</span>
+                  <input type="number" min="0"
+                    value={getObValue(a.id)}
+                    onChange={e => setObEdits(prev => ({ ...prev, [a.id]: e.target.value }))}
+                    style={{ width: 100, padding: "7px 10px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.text, outline: "none", textAlign: "right" }}
+                    onFocus={e => e.target.style.borderColor = C.accent}
+                    onBlur={e => e.target.style.borderColor = C.border}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Liabilities */}
+        {liabilities.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Money you owe</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {liabilities.map(l => (
+                <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: C.surfaceAlt, borderRadius: 12, border: `1px solid ${obEdits[l.id] !== undefined ? "#FF375F40" : C.border}` }}>
+                  <span style={{ fontSize: 18 }}>
+                    {{ loan: "📋", credit_card: "💳", mortgage: "🏠", other: "📦" }[l.type] || "📦"}
+                  </span>
+                  <span style={{ flex: 1, fontSize: 14, color: C.text }}>{l.name}</span>
+                  <span style={{ fontSize: 12, color: C.textMuted }}>{user.currency}</span>
+                  <input type="number" min="0"
+                    value={getObValue(l.id)}
+                    onChange={e => setObEdits(prev => ({ ...prev, [l.id]: e.target.value }))}
+                    style={{ width: 100, padding: "7px 10px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 14, color: C.text, outline: "none", textAlign: "right" }}
+                    onFocus={e => e.target.style.borderColor = "#FF375F"}
+                    onBlur={e => e.target.style.borderColor = C.border}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {assets.length === 0 && liabilities.length === 0 && (
+          <div style={{ padding: "20px", textAlign: "center", color: C.textMuted, fontSize: 14, background: C.surfaceAlt, borderRadius: 12 }}>
+            No opening balances set. Add assets and liabilities in the Net Worth screen.
+          </div>
+        )}
+
+        {(assets.length > 0 || liabilities.length > 0) && (
+          <button
+            onClick={handleObSave}
+            disabled={!hasObEdits || obSaving}
+            style={{
+              width: "100%", padding: "12px", borderRadius: 12, border: "none", marginTop: 4,
+              background: obSaved ? C.income : (!hasObEdits || obSaving) ? C.surfaceAlt : C.accent,
+              color: obSaved ? "white" : (!hasObEdits || obSaving) ? C.textMuted : "white",
+              fontSize: 14, fontWeight: 700,
+              cursor: (!hasObEdits || obSaving) ? "default" : "pointer",
+              transition: "all 300ms",
+              boxShadow: (!hasObEdits || obSaving) ? "none" : `0 4px 16px ${C.accentGlow}`,
+            }}
+          >
+            {obSaved ? "✓ Saved" : obSaving ? "Saving…" : "Save changes"}
+          </button>
+        )}
       </Section>
 
       <Section title="Notifications" C={C}>
