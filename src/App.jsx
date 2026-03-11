@@ -26,7 +26,6 @@ import RecurringScreen from "./screens/RecurringScreen";
 import NotificationsScreen from "./screens/NotificationsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import AskCoveScreen from "./screens/AskCoveScreen";
-import { computeInsights } from "./lib/insightUtils";
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -103,10 +102,37 @@ export default function App() {
     [notifications, notifReadIds, notifDismissedIds]
   );
 
-  // Count proactive insights for nav badge; cleared when user opens Ask Cove
+  // Count proactive insights for nav badge (inline — avoids cross-module import)
   const insightCount = useMemo(() => {
     if (insightsSeen || !user || transactions.length === 0) return 0;
-    return computeInsights(user, transactions, categories, goals, bills).length;
+    const now = new Date();
+    const monthTx = transactions.filter(t => {
+      const d = new Date(t.date);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+    const income  = monthTx.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
+    const expense = monthTx.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+    let count = 0;
+    if (income > 0 && income - expense < 0) count++;
+    const dayOfMonth = now.getDate();
+    const monthPct = dayOfMonth / new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    if (income > 0 && expense / income > monthPct + 0.15) count++;
+    const expCats = categories.filter(c => !c.is_income && c.budget > 0);
+    const overCats = expCats.filter(cat => {
+      const spent = monthTx.filter(t => t.type === "expense" && t.categoryId === cat.id).reduce((s, t) => s + t.amount, 0);
+      return spent / cat.budget >= 1;
+    });
+    if (overCats.length > 0) count++;
+    const unpaid = bills.filter(b => !b.paid);
+    if (unpaid.some(b => b.dueDay < dayOfMonth)) count++;
+    else if (unpaid.some(b => b.dueDay >= dayOfMonth && b.dueDay <= dayOfMonth + 5)) count++;
+    if (goals.some(g => {
+      if (!g.deadline || g.completed || g.paused) return false;
+      const daysLeft = Math.ceil((new Date(g.deadline) - now) / 86400000);
+      return daysLeft > 0 && daysLeft <= 90 && (g.target - g.current) > 0;
+    })) count++;
+    if (income === 0 && dayOfMonth >= 5) count++;
+    return Math.min(count, 4);
   }, [insightsSeen, user, transactions, categories, goals, bills]);
 
   const setNotifications = (updater) => {
