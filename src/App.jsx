@@ -303,7 +303,7 @@ export default function App() {
   return (
     <>
       <GlobalStyles C={C} />
-      <div style={{ display: "flex", minHeight: "100vh", background: C.background }}>
+      <div style={{ display: "flex", minHeight: "100vh", background: C.background, overflow: "hidden", width: "100%" }}>
         <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={mergedNotifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {isMobile
@@ -341,8 +341,9 @@ export default function App() {
             {SCREENS.map(({ id, el }) => (
               <div key={id} style={{
                 display: active === id ? "block" : "none",
-                position: "absolute", inset: 0, overflowY: "auto",
+                position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden",
                 padding: isMobile ? "20px 16px" : "44px 52px",
+                width: "100%",
                 animation: getScreenAnimation(id),
               }}>
                 {el}
