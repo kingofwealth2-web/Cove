@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { springs } from "../tokens/springs";
-import { computeInsights } from "../lib/insightUtils";
 
 // ── Build rich financial context for the AI ──────────────────────────────────
 function buildSystemPrompt(user, transactions, categories, goals, debts, bills) {
@@ -67,47 +66,6 @@ ${billsSummary}
 Answer questions about this data honestly. If something looks concerning, say so gently. If asked about things outside this data, say so clearly. Keep replies focused — no bullet-point essays unless the user specifically asks for a breakdown.`;
 }
 
-// ── Insight card ──────────────────────────────────────────────────────────────
-function InsightCard({ insight, onTap, C }) {
-  const [hov, setHov] = useState(false);
-  const colors = {
-    critical: { bg: C.expenseSoft, border: C.expense + "50", text: C.expense },
-    warning:  { bg: C.warningSoft || C.accentSoft, border: (C.warning || C.accent) + "50", text: C.warning || C.accent },
-    info:     { bg: C.accentSoft, border: C.accent + "40", text: C.accent },
-    positive: { bg: C.incomeSoft, border: C.income + "40", text: C.income },
-  };
-  const col = colors[insight.severity] || colors.info;
-
-  return (
-    <button
-      onClick={() => onTap(insight.prompt)}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        width: "100%", textAlign: "left", cursor: "pointer",
-        background: hov ? col.bg : C.surface,
-        border: `1px solid ${hov ? col.border : C.border}`,
-        borderRadius: 16, padding: "14px 16px",
-        display: "flex", alignItems: "flex-start", gap: 12,
-        transition: `all 200ms ${springs.snap}`,
-        transform: hov ? "translateY(-1px)" : "translateY(0)",
-        boxShadow: hov ? C.shadowLg : C.shadow,
-      }}
-    >
-      <div style={{
-        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-        background: col.bg, border: `1px solid ${col.border}`,
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
-      }}>{insight.icon}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 3 }}>{insight.title}</div>
-        <div style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.5 }}>{insight.detail}</div>
-      </div>
-      <div style={{ color: C.textMuted, fontSize: 16, flexShrink: 0, marginTop: 2, transition: `transform 150ms` , transform: hov ? "translateX(2px)" : "translateX(0)" }}>›</div>
-    </button>
-  );
-}
-
 // ── Markdown-lite renderer ────────────────────────────────────────────────────
 function MessageText({ text, C }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
@@ -132,37 +90,12 @@ const SUGGESTIONS = [
   "What's my biggest expense?",
 ];
 
-// ── Daily brief via AI ────────────────────────────────────────────────────────
-async function fetchDailyBrief(systemPrompt) {
-  const today = new Date().toISOString().slice(0, 10);
-  const cacheKey = `cove_brief_${today}`;
-  const cached = sessionStorage.getItem(cacheKey);
-  if (cached) return cached;
-
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemPrompt,
-      messages: [{
-        role: "user",
-        content: "Give me a concise 2–3 sentence financial brief for today. Be specific with real numbers from my data. Highlight the single most important thing I should act on right now. No intro like 'Sure!' — just the brief.",
-      }],
-    }),
-  });
-  const data = await res.json();
-  const reply = data.reply || "";
-  if (reply) sessionStorage.setItem(cacheKey, reply);
-  return reply;
-}
-
 // ── Main screen ───────────────────────────────────────────────────────────────
-export default function AskCoveScreen({ transactions, categories, goals, debts, bills, user, C, onInsightsSeen }) {
+export default function AskCoveScreen({ transactions, categories, goals, debts, bills, user, C }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [dailyBrief, setDailyBrief] = useState(null); // null | "loading" | string
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -170,25 +103,6 @@ export default function AskCoveScreen({ transactions, categories, goals, debts, 
     () => buildSystemPrompt(user, transactions, categories, goals, debts, bills),
     [user, transactions, categories, goals, debts, bills]
   );
-
-  const insights = useMemo(
-    () => computeInsights(user, transactions, categories, goals, bills),
-    [user, transactions, categories, goals, bills]
-  );
-
-  // Mark insights as seen when screen opens
-  useEffect(() => {
-    onInsightsSeen?.();
-  }, []);
-
-  // Fetch AI daily brief once per day
-  useEffect(() => {
-    if (!systemPrompt || transactions.length === 0) return;
-    setDailyBrief("loading");
-    fetchDailyBrief(systemPrompt)
-      .then(brief => setDailyBrief(brief || null))
-      .catch(() => setDailyBrief(null));
-  }, [systemPrompt]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -228,7 +142,6 @@ export default function AskCoveScreen({ transactions, categories, goals, debts, 
   };
 
   const isEmpty = messages.length === 0;
-  const hasInsights = insights.length > 0;
 
   return (
     <div style={{
@@ -252,64 +165,10 @@ export default function AskCoveScreen({ transactions, categories, goals, debts, 
             <div style={{ textAlign: "center" }}>
               <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 26, color: C.text, margin: "0 0 6px", letterSpacing: "-0.5px" }}>Ask Cove</h2>
               <p style={{ fontSize: 14, color: C.textMuted, margin: 0, lineHeight: 1.5 }}>
-                Your finances, explained. Ask anything or tap an insight below.
+                Your finances, explained. Ask anything below.
               </p>
             </div>
           </div>
-
-          {/* Daily Brief */}
-          {(dailyBrief === "loading" || dailyBrief) && (
-            <div style={{
-              padding: "16px 18px", borderRadius: 18,
-              background: `linear-gradient(135deg, ${C.accent}18, ${C.accentDark || C.accent}10)`,
-              border: `1px solid ${C.accent}30`,
-              animation: `slideUp 300ms ${springs.bounce}`,
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: dailyBrief === "loading" ? 0 : 10 }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: 9, flexShrink: 0,
-                  background: `linear-gradient(135deg, ${C.accent}, ${C.accentDark || C.accent})`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 13, boxShadow: `0 4px 10px ${C.accentGlow}`,
-                }}>✦</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.accent, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  Today's Brief
-                </div>
-              </div>
-              {dailyBrief === "loading" ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8 }}>
-                  <style>{`
-                    @keyframes briefPulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
-                  `}</style>
-                  {[0,1,2].map(i => (
-                    <div key={i} style={{
-                      height: 8, borderRadius: 4, background: C.accent + "60",
-                      width: i === 0 ? 120 : i === 1 ? 80 : 100,
-                      animation: `briefPulse 1.4s ease-in-out ${i * 0.2}s infinite`,
-                    }} />
-                  ))}
-                </div>
-              ) : (
-                <p style={{ fontSize: 14, color: C.textSub, lineHeight: 1.6, margin: 0 }}>
-                  <MessageText text={dailyBrief} C={C} />
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Proactive insights */}
-          {hasInsights && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.06em", paddingLeft: 2 }}>
-                Right now
-              </div>
-              {insights.map((ins, i) => (
-                <div key={ins.id} style={{ animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: `${i * 60}ms` }}>
-                  <InsightCard insight={ins} onTap={send} C={C} />
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* Suggestion chips */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

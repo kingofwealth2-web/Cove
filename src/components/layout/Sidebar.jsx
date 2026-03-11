@@ -61,7 +61,7 @@ function UserCard({ user, C, onSignOut, springs }) {
   );
 }
 
-export default function Sidebar({ active, setActive, onAdd, user, C, notifications, mobileOpen, onMobileClose, onSignOut, theme, onThemeToggle, insightCount = 0 }) {
+export default function Sidebar({ active, setActive, onAdd, user, C, notifications, mobileOpen, onMobileClose, onSignOut, theme, onThemeToggle }) {
   const unread = notifications.filter(n => !n.read).length;
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [collapsed, setCollapsed] = useState(false);
@@ -180,23 +180,6 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
               <span style={{ fontSize: isSpecial ? 15 : 17, flexShrink: 0, fontStyle: isSpecial ? "normal" : "normal" }}>{item.emoji}</span>
               {!collapsed && item.label}
               {!collapsed && isActive && <div style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: C.accent, boxShadow: `0 0 8px ${C.accent}` }} />}
-              {!collapsed && !isActive && item.id === "ask" && insightCount > 0 && (
-                <div style={{
-                  marginLeft: "auto", minWidth: 18, height: 18, borderRadius: 9,
-                  background: C.expense, color: "white",
-                  fontSize: 10, fontWeight: 700,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  padding: "0 5px",
-                  boxShadow: `0 2px 6px ${C.expense}60`,
-                }}>{insightCount}</div>
-              )}
-              {collapsed && item.id === "ask" && insightCount > 0 && (
-                <div style={{
-                  position: "absolute", top: 4, right: 4,
-                  width: 8, height: 8, borderRadius: "50%",
-                  background: C.expense, border: `2px solid ${C.surface}`,
-                }} />
-              )}
             </button>
           );
         })}

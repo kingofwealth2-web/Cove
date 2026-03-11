@@ -43,17 +43,6 @@ export default function App() {
   const [notifDismissedIds, setNotifDismissedIds] = useState(new Set());
   const [mobileSearchQuery, setMobileSearchQuery] = useState("");
   const [mobileSearchActive, setMobileSearchActive] = useState(false);
-  const [insightsSeen, setInsightsSeen] = useState(() => {
-    // True if user has already visited Ask Cove today
-    const today = new Date().toISOString().slice(0, 10);
-    return sessionStorage.getItem("cove_insights_seen") === today;
-  });
-
-  const handleInsightsSeen = () => {
-    const today = new Date().toISOString().slice(0, 10);
-    sessionStorage.setItem("cove_insights_seen", today);
-    setInsightsSeen(true);
-  };
 
   // Reset mobile search when leaving home screen
   useEffect(() => {
@@ -102,42 +91,8 @@ export default function App() {
     [notifications, notifReadIds, notifDismissedIds]
   );
 
-  // Count proactive insights for nav badge (inline — avoids cross-module import)
-  const insightCount = useMemo(() => {
-    if (insightsSeen || !user || transactions.length === 0) return 0;
-    const now = new Date();
-    const monthTx = transactions.filter(t => {
-      const d = new Date(t.date);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    });
-    const income  = monthTx.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
-    const expense = monthTx.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-    let count = 0;
-    if (income > 0 && income - expense < 0) count++;
-    const dayOfMonth = now.getDate();
-    const monthPct = dayOfMonth / new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    if (income > 0 && expense / income > monthPct + 0.15) count++;
-    const expCats = categories.filter(c => !c.is_income && c.budget > 0);
-    const overCats = expCats.filter(cat => {
-      const spent = monthTx.filter(t => t.type === "expense" && t.categoryId === cat.id).reduce((s, t) => s + t.amount, 0);
-      return spent / cat.budget >= 1;
-    });
-    if (overCats.length > 0) count++;
-    const unpaid = bills.filter(b => !b.paid);
-    if (unpaid.some(b => b.dueDay < dayOfMonth)) count++;
-    else if (unpaid.some(b => b.dueDay >= dayOfMonth && b.dueDay <= dayOfMonth + 5)) count++;
-    if (goals.some(g => {
-      if (!g.deadline || g.completed || g.paused) return false;
-      const daysLeft = Math.ceil((new Date(g.deadline) - now) / 86400000);
-      return daysLeft > 0 && daysLeft <= 90 && (g.target - g.current) > 0;
-    })) count++;
-    if (income === 0 && dayOfMonth >= 5) count++;
-    return Math.min(count, 4);
-  }, [insightsSeen, user, transactions, categories, goals, bills]);
-
   const setNotifications = (updater) => {
     const updated = typeof updater === "function" ? updater(mergedNotifications) : updater;
-    // Extract which ids are now read or gone
     const newReadIds = new Set(updated.filter(n => n.read).map(n => n.id));
     const keptIds = new Set(updated.map(n => n.id));
     const newDismissedIds = new Set([
@@ -244,7 +199,6 @@ export default function App() {
     setTheme(t);
     setAccentChoice(accent);
     await saveOnboarding({ name, incomeTypes, currency, accent, theme: t });
-    // Seed opening balances into assets/liabilities tables
     if (openingBalances?.assets?.length) await setAssets(openingBalances.assets);
     if (openingBalances?.liabilities?.length) await setLiabilities(openingBalances.liabilities);
   };
@@ -281,13 +235,11 @@ export default function App() {
     }
   };
 
-  // Adds a new credential { id, label, addedAt } to the array
   const handleEnableBiometric = async (credential) => {
     const updated = [...(biometricCredentials || []), credential];
     await saveSettings({ biometricCredentials: updated });
   };
 
-  // Removes a specific credential by id (per-device removal)
   const handleDisableBiometric = async (credentialId) => {
     const updated = (biometricCredentials || []).filter(c => c.id !== credentialId);
     await saveSettings({ biometricCredentials: updated });
@@ -343,7 +295,7 @@ export default function App() {
     { id: "goals",         el: <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} {...readOnlyProps} /> },
     { id: "debt",          el: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} {...readOnlyProps} /> },
     { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} {...readOnlyProps} /> },
-    { id: "ask",           el: <AskCoveScreen transactions={transactions} categories={categories} goals={goals} debts={debts} bills={bills} user={user} C={C} onInsightsSeen={handleInsightsSeen} /> },
+    { id: "ask",           el: <AskCoveScreen transactions={transactions} categories={categories} goals={goals} debts={debts} bills={bills} user={user} C={C} /> },
     { id: "notifications", el: <NotificationsScreen notifications={mergedNotifications} setNotifications={setNotifications} C={C} /> },
     { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentials={biometricCredentials} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} lastSyncedAt={lastSyncedAt} assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} /> },
   ];
@@ -352,7 +304,7 @@ export default function App() {
     <>
       <GlobalStyles C={C} />
       <div style={{ display: "flex", minHeight: "100vh", background: C.background }}>
-        <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={mergedNotifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} insightCount={insightCount} />
+        <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={mergedNotifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {isMobile
             ? <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => !isReadOnly && setShowAdd(true)} C={C} notifications={mergedNotifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} yearBarProps={yearBarProps} isReadOnly={isReadOnly} activeScreen={active} searchQuery={mobileSearchQuery} onSearchChange={setMobileSearchQuery} searchActive={mobileSearchActive} onSearchToggle={() => { setMobileSearchActive(s => !s); setMobileSearchQuery(""); }} />
