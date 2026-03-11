@@ -25,7 +25,8 @@ import NetWorthScreen from "./screens/NetWorthScreen";
 import RecurringScreen from "./screens/RecurringScreen";
 import NotificationsScreen from "./screens/NotificationsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
-import AskCoveScreen, { computeInsights } from "./screens/AskCoveScreen";
+import AskCoveScreen from "./screens/AskCoveScreen";
+import { computeInsights } from "./lib/insightUtils";
 
 export default function App() {
   const [session, setSession] = useState(null);
