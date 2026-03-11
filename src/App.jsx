@@ -25,7 +25,7 @@ import NetWorthScreen from "./screens/NetWorthScreen";
 import RecurringScreen from "./screens/RecurringScreen";
 import NotificationsScreen from "./screens/NotificationsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
-import AskCoveScreen from "./screens/AskCoveScreen";
+import AskCoveScreen, { computeInsights } from "./screens/AskCoveScreen";
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -43,6 +43,17 @@ export default function App() {
   const [notifDismissedIds, setNotifDismissedIds] = useState(new Set());
   const [mobileSearchQuery, setMobileSearchQuery] = useState("");
   const [mobileSearchActive, setMobileSearchActive] = useState(false);
+  const [insightsSeen, setInsightsSeen] = useState(() => {
+    // True if user has already visited Ask Cove today
+    const today = new Date().toISOString().slice(0, 10);
+    return sessionStorage.getItem("cove_insights_seen") === today;
+  });
+
+  const handleInsightsSeen = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    sessionStorage.setItem("cove_insights_seen", today);
+    setInsightsSeen(true);
+  };
 
   // Reset mobile search when leaving home screen
   useEffect(() => {
@@ -90,6 +101,12 @@ export default function App() {
       .map(n => ({ ...n, read: n.read || notifReadIds.has(n.id) })),
     [notifications, notifReadIds, notifDismissedIds]
   );
+
+  // Count proactive insights for nav badge; cleared when user opens Ask Cove
+  const insightCount = useMemo(() => {
+    if (insightsSeen || !user || transactions.length === 0) return 0;
+    return computeInsights(user, transactions, categories, goals, bills).length;
+  }, [insightsSeen, user, transactions, categories, goals, bills]);
 
   const setNotifications = (updater) => {
     const updated = typeof updater === "function" ? updater(mergedNotifications) : updater;
@@ -296,7 +313,7 @@ export default function App() {
     { id: "goals",         el: <GoalsScreen goals={goals} setGoals={setGoals} user={user} C={C} {...readOnlyProps} /> },
     { id: "debt",          el: <DebtScreen debts={debts} setDebts={setDebts} user={user} C={C} {...readOnlyProps} /> },
     { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} {...readOnlyProps} /> },
-    { id: "ask",           el: <AskCoveScreen transactions={transactions} categories={categories} goals={goals} debts={debts} bills={bills} user={user} C={C} /> },
+    { id: "ask",           el: <AskCoveScreen transactions={transactions} categories={categories} goals={goals} debts={debts} bills={bills} user={user} C={C} onInsightsSeen={handleInsightsSeen} /> },
     { id: "notifications", el: <NotificationsScreen notifications={mergedNotifications} setNotifications={setNotifications} C={C} /> },
     { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentials={biometricCredentials} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} lastSyncedAt={lastSyncedAt} /> },
   ];
@@ -305,7 +322,7 @@ export default function App() {
     <>
       <GlobalStyles C={C} />
       <div style={{ display: "flex", minHeight: "100vh", background: C.background }}>
-        <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={mergedNotifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />
+        <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={mergedNotifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} insightCount={insightCount} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {isMobile
             ? <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => !isReadOnly && setShowAdd(true)} C={C} notifications={mergedNotifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} yearBarProps={yearBarProps} isReadOnly={isReadOnly} activeScreen={active} searchQuery={mobileSearchQuery} onSearchChange={setMobileSearchQuery} searchActive={mobileSearchActive} onSearchToggle={() => { setMobileSearchActive(s => !s); setMobileSearchQuery(""); }} />
