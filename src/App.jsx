@@ -30,7 +30,7 @@ import LandingScreen from "./screens/LandingScreen";
 
 export default function App() {
   const [session, setSession] = useState(null);
-  const [showLanding, setShowLanding] = useState(true);
+  const [showLanding, setShowLanding] = useState(true);  // will be hidden if already signed in
   const [authLoading, setAuthLoading] = useState(true);
   const [theme, setTheme] = useState("dark");
   const [accentChoice, setAccentChoice] = useState(accentOptions[0]);
@@ -67,10 +67,12 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session) setShowLanding(false); // already logged in — skip landing
       setAuthLoading(false);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session) setShowLanding(false); // hide landing on sign-in
     });
     return () => subscription.unsubscribe();
   }, []);
