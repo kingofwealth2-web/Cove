@@ -341,7 +341,7 @@ function SafeToSpendInfo({ currency, totalIncome, totalSpent, safeToSpend, onClo
       }}>Got it</button>
     </div>
   );
-}
+};
 
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function Dashboard({ transactions, categories, bills, goals, user, C, onAdd, onDeleteTransaction, onUpdateTransaction, onBulkDeleteTransactions, selectedYear, mobileSearchQuery, mobileSearchActive }) {
@@ -747,8 +747,11 @@ export default function Dashboard({ transactions, categories, bills, goals, user
                     }}>{t === "all" ? "All" : t.charAt(0).toUpperCase() + t.slice(1)}</button>
                   ))}
                   <div style={{ width: 1, background: C.border, margin: "0 4px" }} />
-                  {/* Category filter */}
-                  {[{ id: "all", name: "All cats", icon: "📋" }, ...categories].map(cat => (
+                  {/* Category filter — only show categories matching the active type */}
+                  {[{ id: "all", name: "All cats", icon: "📋" }, ...categories.filter(c =>
+                    filterType === "income" ? c.is_income :
+                    filterType === "expense" ? !c.is_income : true
+                  )].map(cat => (
                     <button key={cat.id} onClick={() => setFilterCat(cat.id)} style={{
                       padding: "6px 12px", borderRadius: 99, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
                       display: "flex", alignItems: "center", gap: 4,

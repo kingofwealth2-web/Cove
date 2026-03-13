@@ -357,6 +357,16 @@ export default function AddTransactionPanel({ onClose, onSave, categories, setCa
               }}>+ New category</button>
             )}
 
+            {/* Show confirmation when a just-created category is selected */}
+            {type === "income" && catId && !showNewCat && (() => {
+              const selectedCat = categories.find(c => c.id === catId);
+              return selectedCat ? null : (
+                <div style={{ width: "100%", fontSize: 12, color: C.income, padding: "6px 10px", background: C.income + "15", borderRadius: 10, border: `1px solid ${C.income}30` }}>
+                  ✓ New category selected
+                </div>
+              );
+            })()}
+
             {type === "income" && showNewCat && (
               <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8, background: C.surfaceAlt, borderRadius: 14, padding: "12px 14px", border: `1px solid ${C.income}40`, marginTop: 4 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: C.income, marginBottom: 2 }}>New income category</div>
@@ -464,6 +474,11 @@ export default function AddTransactionPanel({ onClose, onSave, categories, setCa
 
       {/* Save button */}
       <div style={{ padding: "8px 28px 28px" }}>
+        {type === "income" && !catId && !splitMode && parsedAmount > 0 && (
+          <div style={{ fontSize: 12, color: "#FF9F0A", padding: "8px 12px", background: "rgba(255,159,10,0.1)", borderRadius: 10, border: "1px solid rgba(255,159,10,0.25)", marginBottom: 8, textAlign: "center" }}>
+            ⚠️ No income category selected — tap a category above first
+          </div>
+        )}
         <button disabled={!canSave} onClick={handleSave} style={{
           width: "100%", padding: "15px", borderRadius: 14, border: "none",
           background: canSave ? C.accent : C.surfaceAlt,
