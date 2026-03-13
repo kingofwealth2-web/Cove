@@ -304,7 +304,7 @@ export default function App() {
     { id: "networth",      el: <NetWorthScreen assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} user={user} C={C} snapshots={snapshots} saveNetworthSnapshot={saveNetworthSnapshot} {...readOnlyProps} /> },
     { id: "ask",           el: <AskCoveScreen transactions={transactions} categories={categories} goals={goals} debts={debts} bills={bills} user={user} C={C} /> },
     { id: "notifications", el: <NotificationsScreen notifications={mergedNotifications} setNotifications={setNotifications} C={C} /> },
-    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentials={biometricCredentials} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} lastSyncedAt={lastSyncedAt} assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} /> },
+    { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentials={biometricCredentials} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} lastSyncedAt={lastSyncedAt} assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} setCategories={setCategories} /> },
   ];
 
   return (
@@ -359,7 +359,7 @@ export default function App() {
           </main>
         </div>
       </div>
-      {showAdd && !isReadOnly && <AddTransactionPanel onClose={() => setShowAdd(false)} onSave={handleAddTransaction} categories={categories} user={user} C={C} fxRates={fxRates} templates={templates} onSaveTemplates={saveTemplates} />}
+      {showAdd && !isReadOnly && <AddTransactionPanel onClose={() => setShowAdd(false)} onSave={handleAddTransaction} categories={categories} setCategories={setCategories} user={user} C={C} fxRates={fxRates} templates={templates} onSaveTemplates={saveTemplates} />}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
     </>
   );

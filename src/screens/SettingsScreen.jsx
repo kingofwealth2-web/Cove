@@ -173,6 +173,7 @@ export default function SettingsScreen({
   pinHash, onSetPin, biometricCredentials = [], onEnableBiometric, onDisableBiometric,
   selectedYear, onImportTransactions, fxRates = {}, onSaveFxRates, lastSyncedAt,
   assets = [], setAssets, liabilities = [], setLiabilities,
+  setCategories,
 }) {
   const isMobile = useIsMobile();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -180,6 +181,12 @@ export default function SettingsScreen({
   const [emailInput, setEmailInput] = useState(session?.user?.email || "");
   const [emailStatus, setEmailStatus] = useState("");
   const [importStatus, setImportStatus] = useState("");
+  const [catTab, setCatTab] = useState("expense"); // "income" | "expense"
+  const [addingCat, setAddingCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatIcon, setNewCatIcon] = useState("📦");
+  const [editingCatId, setEditingCatId] = useState(null);
+  const [editingCatName, setEditingCatName] = useState("");
   const [importError, setImportError] = useState("");
   const [newFxCurrency, setNewFxCurrency] = useState("");
   const [newFxRate, setNewFxRate] = useState("");
@@ -601,6 +608,133 @@ export default function SettingsScreen({
         <div style={{ fontSize: 11, color: C.textMuted, marginTop: 8 }}>
           Adding a currency fetches its current rate automatically.
         </div>
+      </Section>
+
+      <Section title="Categories" C={C}>
+        <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 14, lineHeight: 1.5 }}>
+          Manage your income and expense categories. Changes apply across all transactions.
+        </div>
+
+        {/* Income / Expense tab toggle */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+          {[["expense", "Expenses"], ["income", "Income"]].map(([val, label]) => (
+            <button key={val} onClick={() => { setCatTab(val); setAddingCat(false); setEditingCatId(null); }} style={{
+              padding: "7px 18px", borderRadius: 99, border: "none", cursor: "pointer",
+              fontSize: 13, fontWeight: 600, fontFamily: "inherit",
+              background: catTab === val ? (val === "income" ? C.income : C.accent) : C.surfaceAlt,
+              color: catTab === val ? "white" : C.textSub,
+              transition: "all 180ms ease",
+            }}>{label}</button>
+          ))}
+        </div>
+
+        {/* Category list */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+          {categories.filter(c => catTab === "income" ? c.is_income : !c.is_income).map(cat => (
+            <div key={cat.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.surfaceAlt, borderRadius: 12, padding: "10px 14px", border: `1px solid ${C.border}` }}>
+              <div style={{ width: 32, height: 32, borderRadius: 9, background: cat.color + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{cat.icon}</div>
+              {editingCatId === cat.id ? (
+                <input
+                  autoFocus
+                  value={editingCatName}
+                  onChange={e => setEditingCatName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && editingCatName.trim()) {
+                      setCategories(cats => cats.map(c => c.id === cat.id ? { ...c, name: editingCatName.trim() } : c));
+                      setEditingCatId(null);
+                    }
+                    if (e.key === "Escape") setEditingCatId(null);
+                  }}
+                  style={{ flex: 1, background: C.surface, border: `1px solid ${C.accent}`, borderRadius: 8, padding: "6px 10px", fontSize: 13, color: C.text, outline: "none" }}
+                />
+              ) : (
+                <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: C.text }}>{cat.name}</span>
+              )}
+              <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                {editingCatId === cat.id ? (
+                  <>
+                    <button onClick={() => {
+                      if (editingCatName.trim()) {
+                        setCategories(cats => cats.map(c => c.id === cat.id ? { ...c, name: editingCatName.trim() } : c));
+                      }
+                      setEditingCatId(null);
+                    }} style={{ padding: "5px 12px", background: C.accent, color: "white", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>Save</button>
+                    <button onClick={() => setEditingCatId(null)} style={{ padding: "5px 10px", background: C.surfaceAlt, color: C.textSub, border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => { setEditingCatId(cat.id); setEditingCatName(cat.name); }} style={{ padding: "5px 12px", background: C.surface, color: C.textSub, border: `1px solid ${C.border}`, borderRadius: 8, cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Rename</button>
+                    <button onClick={() => {
+                      if (window.confirm(`Delete "${cat.name}"? Transactions in this category will become uncategorised.`)) {
+                        setCategories(cats => cats.filter(c => c.id !== cat.id));
+                      }
+                    }} style={{ padding: "5px 10px", background: "transparent", color: C.expense, border: `1px solid ${C.expense}30`, borderRadius: 8, cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Delete</button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Add new category */}
+        {addingCat ? (
+          <div style={{ background: C.surfaceAlt, borderRadius: 14, padding: "14px", border: `1px solid ${catTab === "income" ? C.income + "40" : C.accent + "40"}` }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: catTab === "income" ? C.income : C.accent, marginBottom: 10 }}>
+              New {catTab} category
+            </div>
+            <input
+              autoFocus
+              value={newCatName}
+              onChange={e => setNewCatName(e.target.value)}
+              placeholder="Category name..."
+              onKeyDown={e => { if (e.key === "Escape") { setAddingCat(false); setNewCatName(""); } }}
+              style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 14, color: C.text, outline: "none", marginBottom: 10 }}
+            />
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+              {(catTab === "income"
+                ? ["💰","💼","💻","🏪","🎁","🌱","🤝","🏠","🚗","📦"]
+                : ["📦","🛒","🎮","💊","📱","🎵","🏋️","🐾","✈️","🎨"]
+              ).map(em => (
+                <button key={em} onClick={() => setNewCatIcon(em)} style={{
+                  width: 34, height: 34, borderRadius: 9, fontSize: 17, cursor: "pointer",
+                  background: newCatIcon === em ? (catTab === "income" ? C.income + "25" : C.accent + "25") : C.surface,
+                  border: `2px solid ${newCatIcon === em ? (catTab === "income" ? C.income : C.accent) : "transparent"}`,
+                }}>{em}</button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => {
+                if (newCatName.trim()) {
+                  setCategories(cats => [...cats, {
+                    id: crypto.randomUUID(),
+                    name: newCatName.trim(),
+                    icon: newCatIcon,
+                    color: catTab === "income" ? "#34C759" : C.accent,
+                    budget: 0, group: catTab === "income" ? "Income" : "Custom",
+                    rollover: false, is_income: catTab === "income",
+                  }]);
+                  setNewCatName("");
+                  setNewCatIcon(catTab === "income" ? "💰" : "📦");
+                  setAddingCat(false);
+                }
+              }} style={{ flex: 1, padding: "10px", background: catTab === "income" ? C.income : C.accent, color: "white", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 14, fontFamily: "inherit" }}>
+                Add category
+              </button>
+              <button onClick={() => { setAddingCat(false); setNewCatName(""); }} style={{ padding: "10px 16px", background: C.surface, color: C.textSub, border: "none", borderRadius: 10, cursor: "pointer", fontSize: 14, fontFamily: "inherit" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => { setAddingCat(true); setNewCatIcon(catTab === "income" ? "💰" : "📦"); }} style={{
+            width: "100%", padding: "11px", background: "transparent",
+            border: `1px dashed ${catTab === "income" ? C.income + "60" : C.accent + "60"}`,
+            borderRadius: 12, cursor: "pointer",
+            color: catTab === "income" ? C.income : C.accent,
+            fontSize: 14, fontWeight: 600, fontFamily: "inherit",
+            transition: "all 180ms ease",
+          }}>+ Add {catTab} category</button>
+        )}
       </Section>
 
       <Section title="My Accounts" C={C}>

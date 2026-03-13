@@ -3,7 +3,7 @@ import { springs } from "../tokens/springs";
 import SlidePanel from "../components/ui/SlidePanel";
 import Label from "../components/ui/Label";
 
-export default function AddTransactionPanel({ onClose, onSave, categories, user, C, fxRates = {}, templates = [], onSaveTemplates }) {
+export default function AddTransactionPanel({ onClose, onSave, categories, setCategories, user, C, fxRates = {}, templates = [], onSaveTemplates }) {
   const [type, setType] = useState("expense");
   const [amount, setAmount] = useState("");
   const [catId, setCatId] = useState(null);
@@ -15,6 +15,11 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
   const [customRate, setCustomRate] = useState("");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showTemplates, setShowTemplates] = useState(false);
+
+  // Quick-create income category state
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatIcon, setNewCatIcon] = useState("💰");
 
   // Split state
   const [splitMode, setSplitMode] = useState(false);
@@ -339,6 +344,70 @@ export default function AddTransactionPanel({ onClose, onSave, categories, user,
                   <span>{cat.icon}</span>{cat.name}
                 </button>
               ))}
+
+            {/* Quick-create income category */}
+            {type === "income" && setCategories && !showNewCat && (
+              <button onClick={() => setShowNewCat(true)} style={{
+                padding: "7px 13px", borderRadius: 99,
+                border: `1px dashed ${C.income}50`,
+                background: "transparent", color: C.income,
+                fontSize: 13, fontWeight: 600, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 5,
+                transition: `all 200ms ${springs.snap}`,
+              }}>+ New category</button>
+            )}
+
+            {type === "income" && showNewCat && (
+              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8, background: C.surfaceAlt, borderRadius: 14, padding: "12px 14px", border: `1px solid ${C.income}40`, marginTop: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.income, marginBottom: 2 }}>New income category</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    autoFocus
+                    value={newCatName}
+                    onChange={e => setNewCatName(e.target.value)}
+                    placeholder="Category name..."
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && newCatName.trim()) {
+                        const id = crypto.randomUUID();
+                        setCategories(cats => [...cats, { id, name: newCatName.trim(), icon: newCatIcon, color: "#34C759", budget: 0, group: "Income", rollover: false, is_income: true }]);
+                        setCatId(id);
+                        setShowNewCat(false);
+                        setNewCatName("");
+                        setNewCatIcon("💰");
+                      }
+                      if (e.key === "Escape") { setShowNewCat(false); setNewCatName(""); }
+                    }}
+                    style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 14, color: C.text, outline: "none" }}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {["💰","💼","💻","🏪","🎁","📦","🌱","🤝","🏠","🚗"].map(em => (
+                    <button key={em} onClick={() => setNewCatIcon(em)} style={{
+                      width: 32, height: 32, borderRadius: 8, fontSize: 16, cursor: "pointer",
+                      background: newCatIcon === em ? C.income + "30" : C.surface,
+                      border: `2px solid ${newCatIcon === em ? C.income : "transparent"}`,
+                    }}>{em}</button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => {
+                    if (newCatName.trim()) {
+                      const id = crypto.randomUUID();
+                      setCategories(cats => [...cats, { id, name: newCatName.trim(), icon: newCatIcon, color: "#34C759", budget: 0, group: "Income", rollover: false, is_income: true }]);
+                      setCatId(id);
+                      setShowNewCat(false);
+                      setNewCatName("");
+                      setNewCatIcon("💰");
+                    }
+                  }} style={{ flex: 1, padding: "9px", background: C.income, color: "white", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+                    Add category
+                  </button>
+                  <button onClick={() => { setShowNewCat(false); setNewCatName(""); }} style={{ padding: "9px 16px", background: C.surface, color: C.textSub, border: "none", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
