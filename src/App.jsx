@@ -27,10 +27,12 @@ import NotificationsScreen from "./screens/NotificationsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import AskCoveScreen from "./screens/AskCoveScreen";
 import LandingScreen from "./screens/LandingScreen";
+import ResetPasswordScreen from "./screens/ResetPasswordScreen";
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [showLanding, setShowLanding] = useState(true);  // will be hidden if already signed in
+  const [isRecovery, setIsRecovery] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [theme, setTheme] = useState("dark");
   const [accentChoice, setAccentChoice] = useState(accentOptions[0]);
@@ -71,8 +73,9 @@ export default function App() {
       setAuthLoading(false);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (_event === "PASSWORD_RECOVERY") { setIsRecovery(true); setShowLanding(false); return; }
       setSession(session);
-      if (session) setShowLanding(false); // hide landing on sign-in
+      if (session) { setShowLanding(false); setIsRecovery(false); } // hide landing on sign-in
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -279,6 +282,7 @@ export default function App() {
     );
   }
 
+  if (isRecovery) return <ResetPasswordScreen onDone={() => { setIsRecovery(false); }} />;
   if (showLanding) return <LandingScreen onEnter={() => setShowLanding(false)} />;
   if (!session) return <AuthScreen />;
   if (!profile && !loading) return <Onboarding onComplete={handleOnboardingComplete} />;
