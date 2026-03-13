@@ -160,7 +160,151 @@ function EditTxModal({ tx, categories, user, C, onSave, onClose }) {
 }
 
 // ─── Safe-to-spend explanation popover ───────────────────────────────────────
-function SafeToSpendInfo({ totalIncome, totalSpent, safeToSpend, currency, C, onClose }) {
+function IncomeBreakdown({ transactions, categories, user, C, selectedYear, onDrillDown }) {
+  const [expanded, setExpanded] = useState(false);
+  const now = new Date();
+  const isMobile = window.innerWidth < 768;
+
+  const monthTx = transactions.filter(t => {
+    const d = new Date(t.date);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
+
+  const incomeTx = monthTx.filter(t => t.type === "income");
+  const total = incomeTx.reduce((s, t) => s + t.amount, 0);
+
+  const incCats = categories.filter(c => c.is_income);
+
+  // Group by category
+  const byCategory = incCats.map(cat => {
+    const txs = incomeTx.filter(t => t.categoryId === cat.id);
+    const amount = txs.reduce((s, t) => s + t.amount, 0);
+    return { ...cat, amount, txs, pct: total > 0 ? (amount / total) * 100 : 0 };
+  }).filter(c => c.amount > 0).sort((a, b) => b.amount - a.amount);
+
+  // Uncategorised income
+  const uncatTx = incomeTx.filter(t => !categories.find(c => c.id === t.categoryId && c.is_income));
+  if (uncatTx.length > 0) {
+    const amt = uncatTx.reduce((s, t) => s + t.amount, 0);
+    byCategory.push({ id: "_uncat", name: "Other", icon: "💰", amount: amt, txs: uncatTx, pct: total > 0 ? (amt / total) * 100 : 0 });
+  }
+
+  if (incomeTx.length === 0) return null;
+
+  const SHOW_LIMIT = 4;
+  const allTxSorted = [...incomeTx].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const shownTx = expanded ? allTxSorted : allTxSorted.slice(0, SHOW_LIMIT);
+
+  const formatDate = (d) => {
+    const date = new Date(d);
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+
+  return (
+    <div style={{ animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "120ms" }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: C.text, letterSpacing: "-0.3px" }}>Income</h2>
+        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 15, fontWeight: 700, color: C.income }}>
+          + {user.currency} {total.toLocaleString()}
+        </div>
+      </div>
+
+      {/* Category breakdown */}
+      {byCategory.length > 1 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+          {byCategory.map((cat, i) => (
+            <div key={cat.id} onClick={() => onDrillDown && onDrillDown(cat.id)} style={{
+              background: C.surface, borderRadius: 14, padding: "12px 16px",
+              border: `1px solid ${C.border}`,
+              animation: `slideUp 250ms ${springs.bounce} both`,
+              animationDelay: `${i * 40}ms`,
+              cursor: onDrillDown ? "pointer" : "default",
+              transition: "border-color 180ms ease",
+            }}
+            onMouseEnter={e => { if (onDrillDown) e.currentTarget.style.borderColor = C.income + "60"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                  background: C.incomeSoft || "#34C75920",
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+                }}>{cat.icon}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{cat.name}</div>
+                  <div style={{ fontSize: 11, color: C.textMuted }}>{cat.txs.length} transaction{cat.txs.length !== 1 ? "s" : ""}</div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 700, color: C.income }}>
+                    + {user.currency} {cat.amount.toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.textMuted }}>{Math.round(cat.pct)}% of income</div>
+                </div>
+              </div>
+              {/* % bar */}
+              <div style={{ height: 4, background: C.surfaceAlt, borderRadius: 99, overflow: "hidden" }}>
+                <div style={{
+                  height: "100%", borderRadius: 99,
+                  background: `linear-gradient(90deg, ${C.income}, ${C.income}AA)`,
+                  width: `${cat.pct}%`,
+                  transition: `width 600ms ${springs.smooth}`,
+                }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Individual transactions */}
+      <div style={{ background: C.surface, borderRadius: 20, border: `1px solid ${C.border}`, boxShadow: C.shadow, overflow: "hidden" }}>
+        {shownTx.map((tx, i) => {
+          const cat = categories.find(c => c.id === tx.categoryId);
+          return (
+            <div key={tx.id} style={{
+              display: "flex", alignItems: "center", gap: 12,
+              padding: "13px 16px",
+              borderBottom: i < shownTx.length - 1 ? `1px solid ${C.border}` : "none",
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                background: C.incomeSoft || "#34C75920",
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17,
+              }}>
+                {cat?.icon || "💰"}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {tx.note || cat?.name || "Income"}
+                </div>
+                <div style={{ fontSize: 12, color: C.textMuted }}>
+                  {cat?.name || "Income"} · {formatDate(tx.date)}
+                </div>
+              </div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 14, fontWeight: 700, color: C.income, flexShrink: 0 }}>
+                + {user.currency} {tx.amount.toLocaleString()}
+              </div>
+            </div>
+          );
+        })}
+
+        {allTxSorted.length > SHOW_LIMIT && (
+          <button onClick={() => setExpanded(e => !e)} style={{
+            width: "100%", padding: "12px", background: "none", border: "none",
+            borderTop: `1px solid ${C.border}`,
+            cursor: "pointer", fontSize: 13, fontWeight: 600,
+            color: C.accent,
+          }}>
+            {expanded ? "Show less ↑" : `Show all ${allTxSorted.length} income entries ↓`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+function SafeToSpendInfo({ currency, totalIncome, totalSpent, safeToSpend, onClose }) {
   return (
     <div style={{
       position: "absolute", top: "100%", left: 0, right: 0, marginTop: 12, zIndex: 10,
@@ -282,7 +426,8 @@ export default function Dashboard({ transactions, categories, bills, goals, user
     return txs;
   }, [allSorted, filterType, filterCat, activeQuery, categories]);
 
-  const displayTx = showingSearch ? filtered : allSorted.slice(0, 8);
+  const isFiltered = filterType !== "all" || filterCat !== "all";
+  const displayTx = (showingSearch || isFiltered) ? filtered : allSorted.slice(0, 8);
 
   const formatDate = (dateStr) => {
     const d = new Date(dateStr + "T00:00:00");
@@ -504,9 +649,12 @@ export default function Dashboard({ transactions, categories, bills, goals, user
             </div>
           </div>
 
+          {/* Income breakdown */}
+          <IncomeBreakdown transactions={transactions} categories={categories} user={user} C={C} selectedYear={selectedYear} onDrillDown={(catId) => { setFilterType("income"); setFilterCat(catId); const el = document.getElementById("cove-tx-list"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
+
           {/* Transactions with search + bulk delete */}
-          <div style={{ animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "160ms" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 10 }}>
+          <div id="cove-tx-list" style={{ animation: `slideUp 300ms ${springs.bounce} both`, animationDelay: "160ms" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 10 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: C.text, letterSpacing: "-0.3px" }}>Transactions</h2>
               <div style={{ display: "flex", gap: 8 }}>
                 {selectMode ? (
@@ -547,6 +695,32 @@ export default function Dashboard({ transactions, categories, bills, goals, user
                   </>
                 )}
               </div>
+            </div>
+
+            {/* Always-visible type filter tabs */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {[["all", "All"], ["income", "Income"], ["expense", "Expenses"]].map(([val, label]) => (
+                <button key={val} onClick={() => { setFilterType(val); if (val !== "income") setFilterCat("all"); }} style={{
+                  padding: "6px 14px", borderRadius: 99, border: "none", cursor: "pointer",
+                  fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                  background: filterType === val
+                    ? (val === "income" ? C.income : val === "expense" ? C.expense : C.accent)
+                    : "rgba(255,255,255,0.06)",
+                  color: filterType === val ? "white" : "rgba(240,240,248,0.5)",
+                  transition: "all 180ms ease",
+                }}>{label}</button>
+              ))}
+              {filterCat !== "all" && (
+                <button onClick={() => setFilterCat("all")} style={{
+                  padding: "6px 12px", borderRadius: 99, border: "none", cursor: "pointer",
+                  fontSize: 12, fontWeight: 600, fontFamily: "inherit",
+                  background: "rgba(255,255,255,0.06)", color: "rgba(240,240,248,0.5)",
+                  display: "flex", alignItems: "center", gap: 4,
+                  transition: "all 180ms ease",
+                }}>
+                  {categories.find(c => c.id === filterCat)?.icon} {categories.find(c => c.id === filterCat)?.name} ✕
+                </button>
+              )}
             </div>
 
             {/* Search / filter bar — desktop only (mobile uses topbar) */}
