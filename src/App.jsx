@@ -26,9 +26,11 @@ import RecurringScreen from "./screens/RecurringScreen";
 import NotificationsScreen from "./screens/NotificationsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import AskCoveScreen from "./screens/AskCoveScreen";
+import LandingScreen from "./screens/LandingScreen";
 
 export default function App() {
   const [session, setSession] = useState(null);
+  const [showLanding, setShowLanding] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
   const [theme, setTheme] = useState("dark");
   const [accentChoice, setAccentChoice] = useState(accentOptions[0]);
@@ -191,8 +193,12 @@ export default function App() {
   };
 
   const handleAddTransaction = async (tx) => {
-    await addTransaction(tx);
-    setToast("Transaction saved ✓");
+    const result = await addTransaction(tx);
+    if (result?.success === false) {
+      setToast("Failed to save — check your connection and try again.");
+    } else {
+      setToast("Transaction saved ✓");
+    }
   };
 
   const handleOnboardingComplete = async ({ name, incomeTypes, currency, accent, theme: t, openingBalances }) => {
@@ -271,6 +277,7 @@ export default function App() {
     );
   }
 
+  if (showLanding) return <LandingScreen onEnter={() => setShowLanding(false)} />;
   if (!session) return <AuthScreen />;
   if (!profile && !loading) return <Onboarding onComplete={handleOnboardingComplete} />;
   if (pinLocked && pinHash) return <PinScreen pinHash={pinHash} biometricCredentials={biometricCredentials} onUnlock={() => setPinLocked(false)} C={C} />;
