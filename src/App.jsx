@@ -85,7 +85,7 @@ export default function App() {
     transactions, categories, bills, goals, debts, assets, liabilities,
     notifications, notifSettings, budgetMethod, pinHash, fxRates, biometricCredentials,
     templates, saveTemplates,
-    addTransaction, deleteTransaction, updateTransaction,
+    addTransaction, deleteTransaction, updateTransaction, loadError,
     setCategories, setBills, setGoals, setDebts, setAssets, setLiabilities,
     saveOnboarding, saveSettings, saveFxRates, deleteAllData, snapshots, saveNetworthSnapshot,
   } = useSupabaseData(session);
@@ -152,7 +152,7 @@ export default function App() {
     if (!recurring.length) return;
 
     const seen = new Set();
-    const templates = recurring.filter(t => {
+    const recurringTemplates = recurring.filter(t => {
       const key = `${t.categoryId}-${t.note}-${t.type}`;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -164,7 +164,7 @@ export default function App() {
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
 
-    const toLog = templates.filter(t =>
+    const toLog = recurringTemplates.filter(t =>
       !thisMonthTxs.some(m => m.categoryId === t.categoryId && m.note === t.note && m.isRecurring)
     );
 
@@ -262,9 +262,7 @@ export default function App() {
   };
 
   const handleImportTransactions = async (txList) => {
-    for (const tx of txList) {
-      await addTransaction(tx);
-    }
+    await Promise.all(txList.map(tx => addTransaction(tx)));
     setToast(`${txList.length} transaction${txList.length !== 1 ? "s" : ""} imported ✓`);
   };
 
@@ -284,7 +282,7 @@ export default function App() {
 
   if (isRecovery) return <ResetPasswordScreen onDone={() => { setIsRecovery(false); }} />;
   if (showLanding) return <LandingScreen onEnter={() => setShowLanding(false)} />;
-  if (!session) return <AuthScreen />;
+  if (!session) return <AuthScreen onAuth={(user) => { /* session handled by onAuthStateChange */ }} />;
   if (!profile && !loading) return <Onboarding onComplete={handleOnboardingComplete} />;
   if (pinLocked && pinHash) return <PinScreen pinHash={pinHash} biometricCredentials={biometricCredentials} onUnlock={() => setPinLocked(false)} C={C} />;
 
@@ -299,7 +297,7 @@ export default function App() {
   const yearBarProps = { selectedYear, onYearChange: setSelectedYear, minYear, maxYear: currentYear, C, isMobile };
   const readOnlyProps = { selectedYear, isReadOnly };
 
-  const SCREENS = [
+  const SCREENS = useMemo(() => [
     { id: "home",          el: <Dashboard transactions={transactions} categories={categories} bills={bills} goals={goals} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} onBulkDeleteTransactions={handleBulkDeleteTransactions} selectedYear={selectedYear} mobileSearchQuery={mobileSearchQuery} mobileSearchActive={mobileSearchActive} /> },
     { id: "budget",        el: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} {...readOnlyProps} /> },
     { id: "trends",        el: <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} {...readOnlyProps} /> },
@@ -311,11 +309,17 @@ export default function App() {
     { id: "ask",           el: <AskCoveScreen transactions={transactions} categories={categories} goals={goals} debts={debts} bills={bills} user={user} C={C} /> },
     { id: "notifications", el: <NotificationsScreen notifications={mergedNotifications} setNotifications={setNotifications} C={C} /> },
     { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentials={biometricCredentials} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} lastSyncedAt={lastSyncedAt} assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} setCategories={setCategories} /> },
-  ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [transactions, categories, bills, goals, debts, assets, liabilities, user, C, budgetMethod, notifSettings, pinHash, fxRates, biometricCredentials, selectedYear, mergedNotifications, isReadOnly, mobileSearchQuery, mobileSearchActive, templates, snapshots, lastSyncedAt]);
 
   return (
     <>
       <GlobalStyles C={C} />
+      {loadError && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999, background: "#FF375F", color: "white", fontSize: 13, fontWeight: 600, padding: "10px 20px", textAlign: "center" }}>
+          ⚠️ {loadError} — <button onClick={() => window.location.reload()} style={{ background: "none", border: "1px solid white", color: "white", borderRadius: 6, padding: "2px 10px", cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Retry</button>
+        </div>
+      )}
       <div style={{ display: "flex", minHeight: "100vh", background: C.background, overflow: "hidden", width: "100%" }}>
         <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={mergedNotifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>

@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "../lib/supabase";
 
+// ── Module-level mappers (defined once, not recreated on every render) ────────
+const mapCat  = c => ({ id: c.id, name: c.name, icon: c.icon, color: c.color, budget: c.budget_amount, group: c.group_name, rollover: c.rollover, is_income: c.is_income || false, alertAt: c.alert_at ?? 80 });
+const mapTx   = t => ({ id: t.id, categoryId: t.category_id, amount: t.amount, type: t.type, note: t.note, date: t.date, isRecurring: t.is_recurring, originalCurrency: t.original_currency || null, originalAmount: t.original_amount || null, exchangeRate: t.exchange_rate || 1 });
+const mapBill = b => ({ id: b.id, name: b.name, amount: b.amount, dueDay: b.due_day, categoryId: b.category_id, isSubscription: b.is_subscription, paid: b.paid });
+const mapGoal = g => ({ id: g.id, name: g.name, icon: g.icon, target: g.target_amount, current: g.current_amount, deadline: g.deadline, color: g.color, paused: g.paused, contributions: g.contributions || [] });
+const mapDebt = d => ({ id: d.id, lender: d.lender, originalAmount: d.original_amount, currentBalance: d.current_balance, interestRate: d.interest_rate, minimumPayment: d.minimum_payment, dueDay: d.due_day, type: d.type });
+const mapAsset = a => ({ id: a.id, name: a.name, type: a.type, value: a.value });
+const mapLiab  = l => ({ id: l.id, name: l.name, type: l.type, balance: l.balance });
+
 export function useSupabaseData(session) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -13,19 +22,25 @@ export function useSupabaseData(session) {
   const [liabilities, setLiabilitiesState] = useState([]);
   const [snapshots, setSnapshots] = useState([]);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
   const uid = session?.user?.id;
 
   // ── Derived from profile ──────────────────────────────────────────────────
   const DEFAULT_NOTIF = { budgetWarning: true, overBudget: true, billReminder: true, streak: true, monthlyRecap: true };
-  const notifSettings = profile?.notif_settings ? { ...DEFAULT_NOTIF, ...profile.notif_settings } : DEFAULT_NOTIF;
+  // Memoized so notifications useMemo doesn't re-run on every render
+  const notifSettings = useMemo(() =>
+    profile?.notif_settings ? { ...DEFAULT_NOTIF, ...profile.notif_settings } : DEFAULT_NOTIF,
+    [profile?.notif_settings]
+  );
   const budgetMethod  = profile?.budget_method || "envelope";
   const pinHash       = profile?.pin_hash || null;
   const fxRates       = profile?.fx_rates || {};
   const biometricCredentials = profile?.biometric_credentials || [];
   const templates     = profile?.templates || [];
 
-  const expenseCategories = categories.filter(c => !c.is_income);
+  // Memoized so notifications useMemo doesn't re-run on every render
+  const expenseCategories = useMemo(() => categories.filter(c => !c.is_income), [categories]);
 
   // ── Notifications generated from real data ──────────────────────────────
   const notifications = useMemo(() => {
@@ -77,22 +92,15 @@ export function useSupabaseData(session) {
     return items.length > 0 ? items : [{ id: "empty", type: "recap", title: "All clear", body: "No alerts right now. Add transactions to get personalised insights.", time: "Now", read: true }];
   }, [transactions, bills, expenseCategories, notifSettings]);
 
-  // ── Mappers ──────────────────────────────────────────────────────────────
-  const mapCat  = c => ({ id: c.id, name: c.name, icon: c.icon, color: c.color, budget: c.budget_amount, group: c.group_name, rollover: c.rollover, is_income: c.is_income || false, alertAt: c.alert_at ?? 80 });
-  const mapTx   = t => ({ id: t.id, categoryId: t.category_id, amount: t.amount, type: t.type, note: t.note, date: t.date, isRecurring: t.is_recurring, originalCurrency: t.original_currency || null, originalAmount: t.original_amount || null, exchangeRate: t.exchange_rate || 1 });
-  const mapBill = b => ({ id: b.id, name: b.name, amount: b.amount, dueDay: b.due_day, categoryId: b.category_id, isSubscription: b.is_subscription, paid: b.paid });
-  const mapGoal = g => ({ id: g.id, name: g.name, icon: g.icon, target: g.target_amount, current: g.current_amount, deadline: g.deadline, color: g.color, paused: g.paused, contributions: g.contributions || [] });
-  const mapDebt = d => ({ id: d.id, lender: d.lender, originalAmount: d.original_amount, currentBalance: d.current_balance, interestRate: d.interest_rate, minimumPayment: d.minimum_payment, dueDay: d.due_day, type: d.type });
-  const mapAsset = a => ({ id: a.id, name: a.name, type: a.type, value: a.value });
-  const mapLiab  = l => ({ id: l.id, name: l.name, type: l.type, balance: l.balance });
-
   // ── Load all ─────────────────────────────────────────────────────────────
   const loadAll = useCallback(async () => {
     if (!uid) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const [
-        { data: prof }, { data: cats }, { data: txs }, { data: bls },
+        { data: prof, error: profErr },
+        { data: cats }, { data: txs }, { data: bls },
         { data: gls }, { data: dbs }, { data: ast }, { data: lib }, { data: snaps },
       ] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", uid).single(),
@@ -105,6 +113,7 @@ export function useSupabaseData(session) {
         supabase.from("liabilities").select("*").eq("user_id", uid),
         supabase.from("networth_snapshots").select("*").eq("user_id", uid).order("month"),
       ]);
+      if (profErr && profErr.code !== "PGRST116") throw profErr; // PGRST116 = no rows (new user)
       setProfile(prof || null);
       setCategoriesState(cats?.length ? cats.map(mapCat) : []);
       setTransactionsState(txs?.length ? txs.map(mapTx) : []);
@@ -115,6 +124,9 @@ export function useSupabaseData(session) {
       setLiabilitiesState(lib?.length ? lib.map(mapLiab) : []);
       setSnapshots(snaps || []);
       setLastSyncedAt(new Date());
+    } catch (err) {
+      console.error("Cove: failed to load data", err);
+      setLoadError(err?.message || "Failed to load data. Check your connection.");
     } finally {
       setLoading(false);
     }
@@ -224,7 +236,7 @@ export function useSupabaseData(session) {
 
   // ── Transactions ─────────────────────────────────────────────────────────
   const addTransaction = async (tx) => {
-    const { data } = await supabase.from("transactions").insert({
+    const { data, error } = await supabase.from("transactions").insert({
       user_id: uid, category_id: tx.categoryId || null,
       amount: tx.amount, type: tx.type, note: tx.note, date: tx.date, is_recurring: tx.isRecurring,
       original_currency: tx.originalCurrency || null,
@@ -232,6 +244,7 @@ export function useSupabaseData(session) {
       exchange_rate: tx.exchangeRate || 1,
     }).select().single();
     if (data) { setTransactionsState(ts => [mapTx(data), ...ts]); setLastSyncedAt(new Date()); }
+    return { success: !!data, error };
   };
 
   const deleteTransaction = async (id) => {
@@ -255,17 +268,18 @@ export function useSupabaseData(session) {
     const prevIds = new Set(prev.map(x => x.id));
     const nextIds = new Set(next.map(x => x.id));
     const toDelete = [...prevIds].filter(id => !nextIds.has(id));
-    for (const id of toDelete) {
-      await supabase.from(table).delete().eq("id", id).eq("user_id", uid);
-    }
-    for (const item of next) {
-      const row = { ...toRow(item), user_id: uid };
-      if (!prevIds.has(item.id)) {
-        await supabase.from(table).insert(row);
-      } else {
-        await supabase.from(table).update(row).eq("id", item.id).eq("user_id", uid);
-      }
-    }
+    // Run all deletes and upserts in parallel
+    await Promise.all([
+      ...toDelete.map(id => supabase.from(table).delete().eq("id", id).eq("user_id", uid)),
+      ...next.map(item => {
+        const row = { ...toRow(item), user_id: uid };
+        if (!prevIds.has(item.id)) {
+          return supabase.from(table).insert({ id: item.id, ...row });
+        } else {
+          return supabase.from(table).update(row).eq("id", item.id).eq("user_id", uid);
+        }
+      }),
+    ]);
   };
 
   // ── Categories ───────────────────────────────────────────────────────────
@@ -363,6 +377,7 @@ export function useSupabaseData(session) {
       supabase.from("debts").delete().eq("user_id", uid),
       supabase.from("assets").delete().eq("user_id", uid),
       supabase.from("liabilities").delete().eq("user_id", uid),
+      supabase.from("networth_snapshots").delete().eq("user_id", uid),
     ]);
     setTransactionsState([]);
     setCategoriesState([]);
@@ -371,10 +386,11 @@ export function useSupabaseData(session) {
     setDebtsState([]);
     setAssetsState([]);
     setLiabilitiesState([]);
+    setSnapshots([]);
   };
 
   return {
-    profile, loading, lastSyncedAt,
+    profile, loading, lastSyncedAt, loadError, loadError,
     transactions, categories, bills, goals, debts, assets, liabilities,
     notifications, notifSettings, budgetMethod, pinHash, fxRates, biometricCredentials,
     templates, saveTemplates,

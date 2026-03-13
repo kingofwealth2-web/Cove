@@ -7,6 +7,7 @@ export default defineConfig({
     include: ['recharts'],
   },
   build: {
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: {

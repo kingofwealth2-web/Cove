@@ -1,4 +1,4 @@
-const CACHE = "cove-v3";
+const CACHE = "cove-v4";
 const STATIC = ["/", "/index.html"];
 
 // Install — cache shell
