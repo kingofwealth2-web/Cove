@@ -1,16 +1,11 @@
 import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { accentOptions } from "../tokens/colors";
 import { supabase } from "../lib/supabase";
 import { hashPin } from "../lib/pinUtils";
 import { isBiometricAvailable, registerBiometric } from "../lib/biometricUtils";
 import Modal from "../components/ui/Modal";
-
-function useIsMobile() {
-  const [m, setM] = useState(window.innerWidth < 768);
-  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
-  return m;
-}
 
 function Toggle({ value, onChange, label, C }) {
   return (

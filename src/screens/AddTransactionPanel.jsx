@@ -84,7 +84,7 @@ export default function AddTransactionPanel({ onClose, onSave, categories, setCa
     if (!catId) return;
     const cat = categories.find(c => c.id === catId);
     const tpl = {
-      id: `tpl${Date.now()}`,
+      id: crypto.randomUUID(),
       type, categoryId: catId,
       note: note.trim(),
       amount: parsedAmount > 0 ? parsedAmount : null,
@@ -106,7 +106,7 @@ export default function AddTransactionPanel({ onClose, onSave, categories, setCa
       const catAObj = categories.find(c => c.id === splitCatA);
       const catBObj = categories.find(c => c.id === splitCatB);
       onSave({
-        id: `t${Date.now()}`, categoryId: splitCatA,
+        id: crypto.randomUUID(), categoryId: splitCatA,
         amount: amtA, type, note: note ? `${note} (split ${splitPct}%)` : `Split with ${catBObj?.name || ""} (${splitPct}%)`,
         date, isRecurring: false,
         originalCurrency: isForeign ? selectedCurrency : null,
@@ -114,7 +114,7 @@ export default function AddTransactionPanel({ onClose, onSave, categories, setCa
         exchangeRate: isForeign ? rate : 1,
       });
       onSave({
-        id: `t${Date.now() + 1}`, categoryId: splitCatB,
+        id: crypto.randomUUID(), categoryId: splitCatB,
         amount: amtB, type, note: note ? `${note} (split ${100 - splitPct}%)` : `Split with ${catAObj?.name || ""} (${100 - splitPct}%)`,
         date, isRecurring: false,
         originalCurrency: isForeign ? selectedCurrency : null,
@@ -123,7 +123,7 @@ export default function AddTransactionPanel({ onClose, onSave, categories, setCa
       });
     } else {
       onSave({
-        id: `t${Date.now()}`, categoryId: catId,
+        id: crypto.randomUUID(), categoryId: catId,
         amount: totalBase, type, note, date, isRecurring: recurring,
         originalCurrency: isForeign ? selectedCurrency : null,
         originalAmount: isForeign ? parsedAmount : null,

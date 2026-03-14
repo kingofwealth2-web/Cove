@@ -41,7 +41,7 @@ export default function ResetPasswordScreen({ onDone }) {
     }
   };
 
-  const canSave = password.length >= 6 && confirm.length >= 1;
+  const canSave = password.length >= 6 && confirm === password;
 
   return (
     <div style={{ minHeight: "100vh", background: C.background, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>

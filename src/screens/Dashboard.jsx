@@ -1,16 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { springs } from "../tokens/springs";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useCountUp } from "../hooks/useCountUp";
 import ProgressBar from "../components/ui/ProgressBar";
 import Label from "../components/ui/Label";
 import Modal from "../components/ui/Modal";
 import InstallBanner from "../components/ui/InstallBanner";
-
-function useIsMobile() {
-  const [m, setM] = useState(window.innerWidth < 768);
-  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
-  return m;
-}
 
 function DashCatCard({ cat, i, user, C }) {
   const pct = cat.budget > 0 ? (cat.spent / cat.budget) * 100 : 0;
@@ -164,7 +159,7 @@ function EditTxModal({ tx, categories, user, C, onSave, onClose }) {
 function IncomeBreakdown({ transactions, categories, user, C, selectedYear, onDrillDown }) {
   const [expanded, setExpanded] = useState(false);
   const now = new Date();
-  const isMobile = window.innerWidth < 768;
+  const isMobile = useIsMobile();
 
   const monthTx = transactions.filter(t => {
     const d = new Date(t.date);
@@ -300,6 +295,45 @@ function IncomeBreakdown({ transactions, categories, user, C, selectedYear, onDr
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function SafeToSpendInfo({ currency, totalIncome, totalSpent, safeToSpend, onClose }) {
+  return (
+    <div style={{
+      position: "absolute", top: "100%", left: 0, right: 0, marginTop: 12, zIndex: 10,
+      background: "rgba(0,0,0,0.65)", backdropFilter: "blur(20px)",
+      borderRadius: 18, padding: "20px 24px",
+      border: "1px solid rgba(255,255,255,0.15)",
+      boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+      animation: `slideUp 200ms ${springs.bounce}`,
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginBottom: 14, letterSpacing: "0.02em" }}>
+        How is this calculated?
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
+          <span>Total income logged this month</span>
+          <span style={{ fontFamily: "'DM Mono', monospace", color: "#34C759" }}>+ {currency} {totalIncome.toLocaleString()}</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
+          <span>Total expenses logged this month</span>
+          <span style={{ fontFamily: "'DM Mono', monospace", color: "#FF375F" }}>− {currency} {totalSpent.toLocaleString()}</span>
+        </div>
+        <div style={{ height: 1, background: "rgba(255,255,255,0.15)", margin: "4px 0" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: "white" }}>
+          <span>Safe to spend</span>
+          <span style={{ fontFamily: "'DM Mono', monospace" }}>{currency} {safeToSpend.toLocaleString()}</span>
+        </div>
+      </div>
+      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
+        This updates as you log transactions. It only counts what you've actually recorded — not estimates or salary fields.
+      </div>
+      <button onClick={onClose} style={{
+        marginTop: 12, background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10,
+        color: "rgba(255,255,255,0.7)", fontSize: 12, padding: "7px 14px", cursor: "pointer", width: "100%",
+      }}>Got it</button>
     </div>
   );
 }

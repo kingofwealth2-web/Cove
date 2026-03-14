@@ -1,16 +1,11 @@
 import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useCountUp } from "../hooks/useCountUp";
 import ProgressBar from "../components/ui/ProgressBar";
 import Label from "../components/ui/Label";
 import Modal from "../components/ui/Modal";
 import EmptyState from "../components/ui/EmptyState";
-
-function useIsMobile() {
-  const [m, setM] = useState(window.innerWidth < 768);
-  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
-  return m;
-}
 
 export default function BudgetScreen({ transactions, categories, setCategories, user, C, budgetMethod, onBudgetMethodChange, onUpdateTransaction, onDeleteTransaction, selectedYear, isReadOnly }) {
   const isMobile = useIsMobile();
@@ -334,7 +329,7 @@ export default function BudgetScreen({ transactions, categories, setCategories, 
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => {
                 if (newCat.name) {
-                  setCategories(cats => [...cats, { id: `c${Date.now()}`, name: newCat.name, icon: newCat.icon, color: C.accent, budget: parseFloat(newCat.budget) || 0, group: "Custom", rollover: false, is_income: false }]);
+                  setCategories(cats => [...cats, { id: crypto.randomUUID(), name: newCat.name, icon: newCat.icon, color: C.accent, budget: parseFloat(newCat.budget) || 0, group: "Custom", rollover: false, is_income: false }]);
                   setAddingCat(false);
                   setNewCat({ name: "", icon: "📦", color: "#6366F1", budget: "" });
                 }

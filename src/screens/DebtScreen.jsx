@@ -1,16 +1,11 @@
 import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useCountUp } from "../hooks/useCountUp";
 import ProgressBar from "../components/ui/ProgressBar";
 import Modal from "../components/ui/Modal";
 import Label from "../components/ui/Label";
 import EmptyState from "../components/ui/EmptyState";
-
-function useIsMobile() {
-  const [m, setM] = useState(window.innerWidth < 768);
-  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
-  return m;
-}
 
 
 

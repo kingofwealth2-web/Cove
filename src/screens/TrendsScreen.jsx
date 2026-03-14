@@ -1,13 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { springs } from "../tokens/springs";
+import { useIsMobile } from "../hooks/useIsMobile";
 import EmptyState from "../components/ui/EmptyState";
-
-function useIsMobile() {
-  const [m, setM] = useState(window.innerWidth < 768);
-  useEffect(() => { const h = () => setM(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
-  return m;
-}
 
 export default function TrendsScreen({ transactions, categories, user, C, selectedYear, isReadOnly }) {
   const isMobile = useIsMobile();

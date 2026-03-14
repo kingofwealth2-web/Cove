@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { darkColors, lightColors, accentOptions } from "../tokens/colors";
 import { springs } from "../tokens/springs";
+import { useIsMobile } from "../hooks/useIsMobile";
 import GlobalStyles from "../components/ui/GlobalStyles";
 
 const INCOME_TYPES = [
@@ -35,15 +36,9 @@ export default function Onboarding({ onComplete }) {
   const [theme, setTheme] = useState("dark");
   const [openingAssets, setOpeningAssets] = useState({});
   const [openingDebts,  setOpeningDebts]  = useState({});
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const isMobile = useIsMobile();
   const C = theme === "dark" ? darkColors : lightColors;
   const accentC = { ...C, accent: accent.value, accentSoft: accent.soft, accentGlow: accent.glow, accentDark: accent.dark };
-
-  useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
 
   const toggleIncomeType = (id) => {
     setIncomeTypes(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);

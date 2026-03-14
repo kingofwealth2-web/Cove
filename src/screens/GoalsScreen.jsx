@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { springs } from "../tokens/springs";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { useCountUp } from "../hooks/useCountUp";
 import GoalRing from "../components/ui/GoalRing";
 import ProgressBar from "../components/ui/ProgressBar";
@@ -35,7 +36,7 @@ function GoalCard({ goal, i, user, C, onAddMoney, onTogglePause, onEdit, onDelet
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
         <div style={{ position: "relative", flexShrink: 0 }}>
-          <GoalRing current={goal.current} target={goal.target} color={goal.color} size={72} />
+          <GoalRing current={goal.current} target={goal.target} color={goal.color} size={72} C={C} />
           <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 22 }}>{goal.icon}</div>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>

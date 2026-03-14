@@ -124,7 +124,8 @@ export default function AskCoveScreen({ transactions, categories, goals, debts, 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemPrompt,
-          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          // Cap at last 20 messages to stay within Groq context window
+          messages: newMessages.slice(-20).map(m => ({ role: m.role, content: m.content })),
         }),
       });
 
