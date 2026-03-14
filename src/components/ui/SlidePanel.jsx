@@ -26,6 +26,7 @@ export default function SlidePanel({ children, onClose, C, title }) {
         backdropFilter: vis ? "blur(8px)" : "none",
         transition: `all 350ms ${springs.snap}`,
         display: "flex", alignItems: "stretch", justifyContent: "flex-end",
+        overscrollBehavior: "none", touchAction: "none",
       }}
     >
       <div
@@ -37,7 +38,8 @@ export default function SlidePanel({ children, onClose, C, title }) {
           transform: vis ? "translateX(0)" : "translateX(100%)",
           transition: `transform 380ms ${springs.bounce}`,
           boxShadow: "-24px 0 64px rgba(0,0,0,0.5)",
-          overflowY: "auto",
+          overflowY: "auto", overflowX: "hidden",
+          overscrollBehavior: "contain", touchAction: "pan-y",
         }}
       >
         <div style={{

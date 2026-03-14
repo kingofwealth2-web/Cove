@@ -74,9 +74,10 @@ export default function PinScreen({ onUnlock, pinHash, biometricCredentials, C }
 
   return (
     <div style={{
-      position: "fixed", inset: 0, background: C.background,
+      minHeight: "100vh", background: C.background,
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      zIndex: 9999, gap: 36,
+      zIndex: 9999, gap: 36, padding: "40px 24px",
+      overflowY: "auto",
     }}>
       <style>{`
         @keyframes shake {

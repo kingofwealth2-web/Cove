@@ -62,14 +62,6 @@ export default function AddTransactionPanel({ onClose, onSave, categories, setCa
   const parsedAmount = parseFloat(amount) || 0;
   const baseAmount = isForeign ? parsedAmount * rate : parsedAmount;
 
-  const numpad = ["1","2","3","4","5","6","7","8","9",".","0","⌫"];
-  const handleNum = k => {
-    if (k === "⌫") setAmount(a => a.slice(0,-1));
-    else if (k === "." && amount.includes(".")) return;
-    else if (amount.length > 9) return;
-    else setAmount(a => a + k);
-  };
-
   const canSave = parsedAmount > 0 && (splitMode ? (splitCatA && splitCatB && splitCatA !== splitCatB) : catId);
 
   const applyTemplate = (tpl) => {
@@ -454,23 +446,6 @@ export default function AddTransactionPanel({ onClose, onSave, categories, setCa
         )}
       </div>
 
-      {/* Numpad — mobile only */}
-      {isMobile && (
-        <div style={{ padding: "14px 28px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-            {numpad.map(k => (
-              <button key={k} onClick={() => handleNum(k)} style={{
-                padding: "15px", borderRadius: 14, border: "none",
-                background: C.surfaceAlt, color: C.text, fontSize: 18, fontWeight: 600, cursor: "pointer",
-                transition: `transform 100ms ${springs.snap}`,
-              }}
-              onMouseDown={e => e.currentTarget.style.transform = "scale(0.93)"}
-              onMouseUp={e => e.currentTarget.style.transform = "scale(1)"}
-              >{k}</button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Save button */}
       <div style={{ padding: "8px 28px 28px" }}>
