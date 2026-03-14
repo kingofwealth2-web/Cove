@@ -297,7 +297,7 @@ export default function App() {
   const yearBarProps = { selectedYear, onYearChange: setSelectedYear, minYear, maxYear: currentYear, C, isMobile };
   const readOnlyProps = { selectedYear, isReadOnly };
 
-  const SCREENS = useMemo(() => [
+  const SCREENS = [
     { id: "home",          el: <Dashboard transactions={transactions} categories={categories} bills={bills} goals={goals} user={user} C={C} onAdd={() => setShowAdd(true)} onDeleteTransaction={deleteTransaction} onUpdateTransaction={updateTransaction} onBulkDeleteTransactions={handleBulkDeleteTransactions} selectedYear={selectedYear} mobileSearchQuery={mobileSearchQuery} mobileSearchActive={mobileSearchActive} /> },
     { id: "budget",        el: <BudgetScreen transactions={transactions} categories={categories} setCategories={setCategories} user={user} C={C} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} {...readOnlyProps} /> },
     { id: "trends",        el: <TrendsScreen transactions={transactions} categories={categories} user={user} C={C} {...readOnlyProps} /> },
@@ -309,8 +309,7 @@ export default function App() {
     { id: "ask",           el: <AskCoveScreen transactions={transactions} categories={categories} goals={goals} debts={debts} bills={bills} user={user} C={C} /> },
     { id: "notifications", el: <NotificationsScreen notifications={mergedNotifications} setNotifications={setNotifications} C={C} /> },
     { id: "settings",      el: <SettingsScreen user={user} setUser={setUser} C={C} session={session} setTheme={handleThemeChange} theme={theme} accentChoice={accentChoice} setAccentChoice={handleAccentChange} onSignOut={handleSignOut} transactions={transactions} categories={categories} onDeleteAllData={handleDeleteAllData} budgetMethod={budgetMethod} onBudgetMethodChange={handleBudgetMethodChange} notifSettings={notifSettings} onNotifSettingsChange={handleNotifSettingsChange} pinHash={pinHash} onSetPin={handleSetPin} biometricCredentials={biometricCredentials} onEnableBiometric={handleEnableBiometric} onDisableBiometric={handleDisableBiometric} selectedYear={selectedYear} onImportTransactions={handleImportTransactions} fxRates={fxRates} onSaveFxRates={saveFxRates} lastSyncedAt={lastSyncedAt} assets={assets} setAssets={setAssets} liabilities={liabilities} setLiabilities={setLiabilities} setCategories={setCategories} /> },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [transactions, categories, bills, goals, debts, assets, liabilities, user, C, budgetMethod, notifSettings, pinHash, fxRates, biometricCredentials, selectedYear, mergedNotifications, isReadOnly, mobileSearchQuery, mobileSearchActive, templates, snapshots, lastSyncedAt]);
+  ];
 
   return (
     <>
