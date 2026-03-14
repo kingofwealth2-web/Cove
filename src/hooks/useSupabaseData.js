@@ -134,6 +134,26 @@ export function useSupabaseData(session) {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  // ── Real-time sync — reload data when any table changes on another device ─
+  useEffect(() => {
+    if (!uid) return;
+
+    const channel = supabase
+      .channel(`cove-sync-${uid}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions",       filter: `user_id=eq.${uid}` }, () => loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "categories",         filter: `user_id=eq.${uid}` }, () => loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "bills",              filter: `user_id=eq.${uid}` }, () => loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "goals",              filter: `user_id=eq.${uid}` }, () => loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "debts",              filter: `user_id=eq.${uid}` }, () => loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "assets",             filter: `user_id=eq.${uid}` }, () => loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "liabilities",        filter: `user_id=eq.${uid}` }, () => loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "networth_snapshots", filter: `user_id=eq.${uid}` }, () => loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles",           filter: `id=eq.${uid}`      }, () => loadAll())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [uid, loadAll]);
+
   // Reset all state on sign out
   useEffect(() => {
     if (!uid) {
