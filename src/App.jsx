@@ -321,7 +321,7 @@ export default function App() {
         </div>
       )}
       <div style={{ display: "flex", minHeight: "100vh", background: C.background, overflow: "hidden", width: "100%" }}>
-        <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={mergedNotifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} />
+        <Sidebar active={active} setActive={navigate} onAdd={() => setShowAdd(true)} user={user} C={C} notifications={mergedNotifications} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} onSignOut={handleSignOut} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} isMobile={isMobile} />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {isMobile
             ? <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} onAdd={() => !isReadOnly && setShowAdd(true)} C={C} notifications={mergedNotifications} theme={theme} onThemeToggle={() => handleThemeChange(theme === "dark" ? "light" : "dark")} yearBarProps={yearBarProps} isReadOnly={isReadOnly} activeScreen={active} searchQuery={mobileSearchQuery} onSearchChange={setMobileSearchQuery} searchActive={mobileSearchActive} onSearchToggle={() => { setMobileSearchActive(s => !s); setMobileSearchQuery(""); }} />

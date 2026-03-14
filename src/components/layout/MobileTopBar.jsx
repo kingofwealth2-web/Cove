@@ -30,11 +30,20 @@ export default function MobileTopBar({
   const isHome = activeScreen === "home";
   const searchRef = useRef(null);
 
+  // Auto-focus search input when activated
   useEffect(() => {
     if (searchActive && isHome) {
       setTimeout(() => searchRef.current?.focus(), 100);
     }
   }, [searchActive, isHome]);
+
+  // Escape key closes search
+  useEffect(() => {
+    if (!searchActive) return;
+    const handler = (e) => { if (e.key === "Escape") onSearchToggle(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [searchActive, onSearchToggle]);
 
   return (
     <div style={{
@@ -49,11 +58,15 @@ export default function MobileTopBar({
         padding: "10px 16px 6px", gap: 8,
       }}>
         {/* Hamburger */}
-        <button onClick={onMenuOpen} style={{
-          background: C.surfaceAlt, border: "none", cursor: "pointer",
-          borderRadius: 10, width: 36, height: 36, flexShrink: 0,
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5,
-        }}>
+        <button
+          aria-label="Open menu"
+          onClick={onMenuOpen}
+          style={{
+            background: C.surfaceAlt, border: "none", cursor: "pointer",
+            borderRadius: 10, width: 36, height: 36, flexShrink: 0,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5,
+          }}
+        >
           <div style={{ width: 18, height: 2, borderRadius: 2, background: C.text }} />
           <div style={{ width: 14, height: 2, borderRadius: 2, background: C.textSub }} />
           <div style={{ width: 18, height: 2, borderRadius: 2, background: C.text }} />
@@ -73,16 +86,21 @@ export default function MobileTopBar({
                 value={searchQuery}
                 onChange={e => onSearchChange(e.target.value)}
                 placeholder="Search transactions…"
+                aria-label="Search transactions"
                 style={{
                   flex: 1, background: "none", border: "none", outline: "none",
                   fontSize: 14, color: C.text, fontFamily: "inherit",
                 }}
               />
               {searchQuery ? (
-                <button onClick={() => onSearchChange("")} style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  color: C.textMuted, fontSize: 16, padding: 0, lineHeight: 1,
-                }}>✕</button>
+                <button
+                  aria-label="Clear search"
+                  onClick={() => onSearchChange("")}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: C.textMuted, fontSize: 16, padding: 0, lineHeight: 1,
+                  }}
+                >✕</button>
               ) : null}
             </div>
             <button onClick={onSearchToggle} style={{
@@ -100,32 +118,45 @@ export default function MobileTopBar({
             {/* Right controls */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
               {isHome && (
-                <button onClick={onSearchToggle} style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  background: C.surfaceAlt, border: "1px solid " + C.border,
-                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                  color: C.textSub,
-                }}>
+                <button
+                  aria-label="Search transactions"
+                  onClick={onSearchToggle}
+                  style={{
+                    width: 36, height: 36, borderRadius: 10,
+                    background: C.surfaceAlt, border: "1px solid " + C.border,
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    color: C.textSub,
+                  }}
+                >
                   <SearchIcon />
                 </button>
               )}
-              <button onClick={onThemeToggle} style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: C.surfaceAlt, border: "1px solid " + C.border,
-                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                color: isDark ? "#FFD60A" : "#5254CC",
-              }}>
+              <button
+                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+                onClick={onThemeToggle}
+                style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: C.surfaceAlt, border: "1px solid " + C.border,
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  color: isDark ? "#FFD60A" : "#5254CC",
+                }}
+              >
                 {isDark ? <SunIcon /> : <MoonIcon />}
               </button>
-              <button onClick={onAdd} disabled={isReadOnly} style={{
-                background: isReadOnly ? C.surfaceAlt : C.accent,
-                border: "none", cursor: isReadOnly ? "not-allowed" : "pointer",
-                borderRadius: 10, width: 36, height: 36,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: isReadOnly ? C.textMuted : "white", fontSize: 22, fontWeight: 300,
-                boxShadow: isReadOnly ? "none" : "0 4px 12px " + C.accentGlow,
-                opacity: isReadOnly ? 0.4 : 1,
-              }}>+</button>
+              <button
+                aria-label={isReadOnly ? "Read-only mode" : "Add transaction"}
+                onClick={onAdd}
+                disabled={isReadOnly}
+                style={{
+                  background: isReadOnly ? C.surfaceAlt : C.accent,
+                  border: "none", cursor: isReadOnly ? "not-allowed" : "pointer",
+                  borderRadius: 10, width: 36, height: 36,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color: isReadOnly ? C.textMuted : "white", fontSize: 22, fontWeight: 300,
+                  boxShadow: isReadOnly ? "none" : "0 4px 12px " + C.accentGlow,
+                  opacity: isReadOnly ? 0.4 : 1,
+                }}
+              >+</button>
             </div>
           </>
         )}

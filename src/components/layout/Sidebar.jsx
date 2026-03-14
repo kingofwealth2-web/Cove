@@ -22,11 +22,14 @@ const CoveLogo = ({ size = 18 }) => (
   </svg>
 );
 
-function UserCard({ user, C, onSignOut, springs }) {
+// springs is imported at module level — no need to pass as prop
+function UserCard({ user, C, onSignOut }) {
   const [hovered, setHovered] = useState(false);
 
   return (
     <div
+      role="button"
+      aria-label={hovered ? "Sign out" : user.name}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={hovered ? onSignOut : undefined}
@@ -45,7 +48,7 @@ function UserCard({ user, C, onSignOut, springs }) {
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: hovered ? "#FF3B30" : C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", transition: `color 200ms` }}>{user.name}</div>
-        <div style={{ fontSize: 11, color: hovered ? "rgba(255,59,48,0.6)" : C.textMuted, transition: `color 200ms` }}>{user.currency}</div>
+        <div style={{ fontSize: 11, color: hovered ? "rgba(255,59,48,0.6)" : C.textMuted, transition: `color 200ms` }}>{hovered ? "Sign out" : user.currency}</div>
       </div>
       <div style={{ width: 1, height: 28, background: hovered ? "rgba(255,59,48,0.2)" : C.border, transition: `background 200ms`, flexShrink: 0 }} />
       <svg
@@ -61,16 +64,24 @@ function UserCard({ user, C, onSignOut, springs }) {
   );
 }
 
-export default function Sidebar({ active, setActive, onAdd, user, C, notifications, mobileOpen, onMobileClose, onSignOut, theme, onThemeToggle }) {
+export default function Sidebar({
+  active, setActive, onAdd, user, C, notifications,
+  mobileOpen, onMobileClose, onSignOut, theme, onThemeToggle,
+  isMobile: isMobileProp,  // accept from App.jsx to avoid duplicate resize listener
+}) {
   const unread = notifications.filter(n => !n.read).length;
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  // Fallback to local detection only if prop not provided (backward-compat)
+  const [isMobileLocal, setIsMobileLocal] = useState(window.innerWidth < 768);
+  const isMobile = isMobileProp !== undefined ? isMobileProp : isMobileLocal;
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 768);
+    // Only register listener if App.jsx didn't provide isMobile prop
+    if (isMobileProp !== undefined) return;
+    const handler = () => setIsMobileLocal(window.innerWidth < 768);
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
-  }, []);
+  }, [isMobileProp]);
 
   const handleNav = (id) => {
     setActive(id);
@@ -110,11 +121,15 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
         </div>
         {!collapsed && !isMobile && (
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <button onClick={() => handleNav("notifications")} style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: 4 }}>
+            <button
+              aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
+              onClick={() => handleNav("notifications")}
+              style={{ position: "relative", background: "none", border: "none", cursor: "pointer", padding: 4 }}
+            >
               <span style={{ fontSize: 18 }}>🔔</span>
               {unread > 0 && <div style={{ position: "absolute", top: 0, right: 0, width: 8, height: 8, borderRadius: "50%", background: C.expense, border: `2px solid ${C.surface}` }} />}
             </button>
-            <button onClick={() => setCollapsed(true)} title="Collapse sidebar" style={{
+            <button onClick={() => setCollapsed(true)} title="Collapse sidebar" aria-label="Collapse sidebar" style={{
               background: "none", border: "none", cursor: "pointer", padding: 6,
               color: C.textMuted, display: "flex", alignItems: "center", justifyContent: "center",
               borderRadius: 10, transition: `all 200ms ${springs.snap}`,
@@ -131,7 +146,7 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
           </div>
         )}
         {collapsed && !isMobile && (
-          <button onClick={() => setCollapsed(false)} title="Expand sidebar" style={{
+          <button onClick={() => setCollapsed(false)} title="Expand sidebar" aria-label="Expand sidebar" style={{
             background: "none", border: "none", cursor: "pointer", padding: 6,
             color: C.textMuted, display: "flex", alignItems: "center", justifyContent: "center",
             borderRadius: 10, transition: `all 200ms ${springs.snap}`,
@@ -147,24 +162,26 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
           </button>
         )}
         {isMobile && !collapsed && (
-          <button onClick={onMobileClose} style={{ background: C.surfaceAlt, border: "none", cursor: "pointer", borderRadius: 8, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: C.textSub, fontSize: 16 }}>×</button>
+          <button aria-label="Close menu" onClick={onMobileClose} style={{ background: C.surfaceAlt, border: "none", cursor: "pointer", borderRadius: 8, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", color: C.textSub, fontSize: 16 }}>×</button>
         )}
       </div>
 
       {/* Nav */}
-      <nav style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-        {NAV.map((item, i) => {
+      <nav aria-label="Main navigation" style={{ padding: "0 8px", display: "flex", flexDirection: "column", gap: 2 }}>
+        {NAV.map((item) => {
           const isActive = active === item.id;
           const isSpecial = item.special;
           return (
             <button key={item.id} onClick={() => handleNav(item.id)}
+              aria-label={item.label}
+              aria-current={isActive ? "page" : undefined}
               title={collapsed ? item.label : ""}
               style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: collapsed ? "10px 0" : "10px 12px",
                 justifyContent: collapsed ? "center" : "flex-start",
-                borderRadius: 12, border: "none", cursor: "pointer",
-                position: "relative",
+                borderRadius: 12, border: isSpecial ? `1px solid ${C.accent}25` : "none",
+                cursor: "pointer", position: "relative",
                 background: isActive
                   ? (isSpecial ? `linear-gradient(135deg, ${C.accent}30, ${C.accentDark || C.accent}20)` : C.accentSoft)
                   : (isSpecial ? `linear-gradient(135deg, ${C.accent}12, ${C.accentDark || C.accent}08)` : "transparent"),
@@ -172,12 +189,11 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
                 fontSize: 14, fontWeight: isActive || isSpecial ? 600 : 400, textAlign: "left",
                 transition: `all 200ms ${springs.snap}`,
                 width: "100%",
-                border: isSpecial ? `1px solid ${C.accent}25` : "none",
               }}
               onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = isSpecial ? `linear-gradient(135deg, ${C.accent}22, ${C.accentDark || C.accent}14)` : C.surfaceHover; e.currentTarget.style.color = isSpecial ? C.accent : C.text; }}}
               onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = isSpecial ? `linear-gradient(135deg, ${C.accent}12, ${C.accentDark || C.accent}08)` : "transparent"; e.currentTarget.style.color = isSpecial ? C.accent : C.textSub; }}}
             >
-              <span style={{ fontSize: isSpecial ? 15 : 17, flexShrink: 0, fontStyle: isSpecial ? "normal" : "normal" }}>{item.emoji}</span>
+              <span style={{ fontSize: isSpecial ? 15 : 17, flexShrink: 0 }}>{item.emoji}</span>
               {!collapsed && item.label}
               {!collapsed && isActive && <div style={{ marginLeft: "auto", width: 6, height: 6, borderRadius: "50%", background: C.accent, boxShadow: `0 0 8px ${C.accent}` }} />}
             </button>
@@ -187,16 +203,19 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
 
       {/* Bottom: Theme toggle + Add Transaction + User card */}
       <div style={{ marginTop: "auto", padding: "12px 8px 0", display: "flex", flexDirection: "column", gap: 6 }}>
-        {/* Theme toggle */}
-        <button onClick={onThemeToggle} title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"} style={{
-          width: "100%", padding: collapsed ? "10px 0" : "10px 12px",
-          background: "none", border: `1px solid ${C.border}`,
-          borderRadius: 12, cursor: "pointer", fontSize: collapsed ? 18 : 13,
-          display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start", gap: 8,
-          color: C.textMuted, transition: `all 200ms ${springs.snap}`,
-        }}
-        onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = C.textMuted; }}
+        <button
+          onClick={onThemeToggle}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          style={{
+            width: "100%", padding: collapsed ? "10px 0" : "10px 12px",
+            background: "none", border: `1px solid ${C.border}`,
+            borderRadius: 12, cursor: "pointer", fontSize: collapsed ? 18 : 13,
+            display: "flex", alignItems: "center", justifyContent: collapsed ? "center" : "flex-start", gap: 8,
+            color: C.textMuted, transition: `all 200ms ${springs.snap}`,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.surfaceAlt; e.currentTarget.style.color = C.text; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = C.textMuted; }}
         >
           <span>{theme === "dark" ? "☀️" : "🌙"}</span>
           {!collapsed && (theme === "dark" ? "Light mode" : "Dark mode")}
@@ -213,7 +232,7 @@ export default function Sidebar({ active, setActive, onAdd, user, C, notificatio
         >{collapsed ? "+" : "+ Add Transaction"}</button>
 
         {!collapsed && (
-          <UserCard user={user} C={C} onSignOut={onSignOut} springs={springs} />
+          <UserCard user={user} C={C} onSignOut={onSignOut} />
         )}
       </div>
     </aside>

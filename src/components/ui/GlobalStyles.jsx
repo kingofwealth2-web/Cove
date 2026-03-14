@@ -13,10 +13,14 @@ export default function GlobalStyles({ C }) {
       input[type=number]::-webkit-inner-spin-button,
       input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
       input[type=number] { -moz-appearance: textfield; appearance: textfield; }
-      @keyframes slideIn { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
-      @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-      @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-      @keyframes toastIn { from { opacity:0; transform:translateY(20px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
+      @keyframes slideIn  { from { opacity:0; transform:translateX(-12px); } to { opacity:1; transform:translateX(0); } }
+      @keyframes slideUp  { from { opacity:0; transform:translateY(16px); }  to { opacity:1; transform:translateY(0); } }
+      @keyframes fadeIn   { from { opacity:0; }                               to { opacity:1; } }
+      @keyframes toastIn  { from { opacity:0; transform:translateY(20px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
+      @keyframes spin     { to   { transform: rotate(360deg); } }
+      @keyframes shimmer  { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+      @keyframes pulse    { 0%, 100% { opacity:1; } 50% { opacity:0.5; } }
+      @keyframes ringFill { from { stroke-dashoffset: var(--circ); } to { stroke-dashoffset: var(--offset); } }
     `}</style>
   );
 }

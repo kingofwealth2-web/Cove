@@ -4,6 +4,7 @@ import { useCountUp } from "../hooks/useCountUp";
 import ProgressBar from "../components/ui/ProgressBar";
 import Label from "../components/ui/Label";
 import Modal from "../components/ui/Modal";
+import InstallBanner from "../components/ui/InstallBanner";
 
 function useIsMobile() {
   const [m, setM] = useState(window.innerWidth < 768);
@@ -303,46 +304,6 @@ function IncomeBreakdown({ transactions, categories, user, C, selectedYear, onDr
   );
 }
 
-
-function SafeToSpendInfo({ currency, totalIncome, totalSpent, safeToSpend, onClose }) {
-  return (
-    <div style={{
-      position: "absolute", top: "100%", left: 0, right: 0, marginTop: 12, zIndex: 10,
-      background: "rgba(0,0,0,0.65)", backdropFilter: "blur(20px)",
-      borderRadius: 18, padding: "20px 24px",
-      border: "1px solid rgba(255,255,255,0.15)",
-      boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-      animation: `slideUp 200ms ${springs.bounce}`,
-    }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginBottom: 14, letterSpacing: "0.02em" }}>
-        How is this calculated?
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
-          <span>Total income logged this month</span>
-          <span style={{ fontFamily: "'DM Mono', monospace", color: "#34C759" }}>+ {currency} {totalIncome.toLocaleString()}</span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
-          <span>Total expenses logged this month</span>
-          <span style={{ fontFamily: "'DM Mono', monospace", color: "#FF375F" }}>− {currency} {totalSpent.toLocaleString()}</span>
-        </div>
-        <div style={{ height: 1, background: "rgba(255,255,255,0.15)", margin: "4px 0" }} />
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: "white" }}>
-          <span>Safe to spend</span>
-          <span style={{ fontFamily: "'DM Mono', monospace" }}>{currency} {safeToSpend.toLocaleString()}</span>
-        </div>
-      </div>
-      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>
-        This updates as you log transactions. It only counts what you've actually recorded — not estimates or salary fields.
-      </div>
-      <button onClick={onClose} style={{
-        marginTop: 12, background: "rgba(255,255,255,0.12)", border: "none", borderRadius: 10,
-        color: "rgba(255,255,255,0.7)", fontSize: 12, padding: "7px 14px", cursor: "pointer", width: "100%",
-      }}>Got it</button>
-    </div>
-  );
-};
-
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function Dashboard({ transactions, categories, bills, goals, user, C, onAdd, onDeleteTransaction, onUpdateTransaction, onBulkDeleteTransactions, selectedYear, mobileSearchQuery, mobileSearchActive }) {
   const isMobile = useIsMobile();
@@ -352,23 +313,6 @@ export default function Dashboard({ transactions, categories, bills, goals, user
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [checklistDismissed, setChecklistDismissed] = useState(false);
-  const [installable, setInstallable] = useState(!!window.__pwaPrompt);
-  const [installBannerDismissed, setInstallBannerDismissed] = useState(false);
-
-  useEffect(() => {
-    const check = () => setInstallable(!!window.__pwaPrompt);
-    window.addEventListener("beforeinstallprompt", check);
-    return () => window.removeEventListener("beforeinstallprompt", check);
-  }, []);
-
-  const handleInstall = async () => {
-    if (!window.__pwaPrompt) return;
-    window.__pwaPrompt.prompt();
-    const { outcome } = await window.__pwaPrompt.userChoice;
-    if (outcome === "accepted") { window.__pwaPrompt = null; setInstallBannerDismissed(true); }
-    setInstallable(false);
-  };
-
   // Desktop search & filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -443,27 +387,7 @@ export default function Dashboard({ transactions, categories, bills, goals, user
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
 
       {/* Install banner — Android Chrome */}
-      {installable && !installBannerDismissed && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 12,
-          background: `linear-gradient(135deg, ${C.accent}22, ${C.accent}08)`,
-          border: `1px solid ${C.accent}40`, borderRadius: 16, padding: "14px 18px",
-          animation: `slideUp 300ms ${springs.bounce}`,
-        }}>
-          <span style={{ fontSize: 24 }}>📲</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Install Cove</div>
-            <div style={{ fontSize: 12, color: C.textMuted }}>Add to your home screen</div>
-          </div>
-          <button onClick={handleInstall} style={{
-            padding: "8px 16px", borderRadius: 10, border: "none",
-            background: C.accent, color: "white", fontSize: 13, fontWeight: 700, cursor: "pointer",
-          }}>Install</button>
-          <button onClick={() => setInstallBannerDismissed(true)} style={{
-            background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: 18, padding: "0 4px",
-          }}>✕</button>
-        </div>
-      )}
+      <InstallBanner C={C} />
 
       {/* ── Getting Started checklist ─────────────────────────────────────── */}
       {(() => {

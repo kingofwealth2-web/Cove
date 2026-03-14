@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { springs } from "../../tokens/springs";
 
 export default function YearBar({ selectedYear, onYearChange, minYear, maxYear, C, isMobile }) {
@@ -38,6 +38,7 @@ export default function YearBar({ selectedYear, onYearChange, minYear, maxYear, 
       transition: `all 300ms ${springs.smooth}`,
     }}>
       <button
+        aria-label="Previous year"
         style={btnStyle(selectedYear <= minYear)}
         onClick={() => go(-1)}
         onMouseEnter={e => { if (selectedYear > minYear) e.currentTarget.style.background = C.surfaceHover; }}
@@ -56,6 +57,7 @@ export default function YearBar({ selectedYear, onYearChange, minYear, maxYear, 
       }}>{selectedYear}</div>
 
       <button
+        aria-label="Next year"
         style={btnStyle(selectedYear >= maxYear)}
         onClick={() => go(1)}
         onMouseEnter={e => { if (selectedYear < maxYear) e.currentTarget.style.background = C.surfaceHover; }}
