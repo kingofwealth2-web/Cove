@@ -96,11 +96,11 @@ export default function PinScreen({ onUnlock, pinHash, biometricCredentials, C }
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 32, fontFamily: "'DM Serif Display', serif", color: C.text, marginBottom: 8 }}>🔒 Cove</div>
         <div style={{ fontSize: 15, color: C.textMuted }}>
-          {bioState === "prompting" ? "Waiting for biometric…" : "Enter your PIN to continue"}
+          {bioState === "prompting" ? "Waiting for biometric..." : "Enter your PIN to continue"}
         </div>
       </div>
 
-      {/* Biometric button — shown when credential exists */}
+      {/* Biometric button -- shown when credential exists */}
       {hasBio && (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
           <button
@@ -119,7 +119,7 @@ export default function PinScreen({ onUnlock, pinHash, biometricCredentials, C }
             <FingerprintIcon size={38} color={bioState === "failed" ? C.textMuted : C.accent} />
           </button>
           <div style={{ fontSize: 12, color: bioState === "failed" ? C.textMuted : C.accent, fontWeight: 500 }}>
-            {bioState === "failed" ? "Biometric unavailable — use PIN" : bioState === "prompting" ? "Checking…" : "Tap to use biometrics"}
+            {bioState === "failed" ? "Biometric unavailable -- use PIN" : bioState === "prompting" ? "Checking..." : "Tap to use biometrics"}
           </div>
           {bioState !== "prompting" && (
             <button onClick={() => setShowPin(s => !s)} style={{
